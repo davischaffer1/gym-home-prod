@@ -17,6 +17,10 @@ import {
   suggestLoadIncrement,
   analyzeRIRForNextSet,
 } from './trainingScience';
+import {
+  predict1RM,
+  detectLatentPR,
+} from './trainingScience';
 
 interface Props {
   workoutId: number;
@@ -472,6 +476,42 @@ function ExerciseCard({
 
   const totalTut = allSets.reduce((acc, s) => acc + (s.tutSeconds ?? 0), 0);
 
+  // 📊 1RM em tempo real (melhor série da sessão atual)
+const best1RM = useLiveQuery(
+  async () => {
+    if (allSets.length === 0) return null;
+    let best: { set: any; estimate: number } | null = null;
+
+    for (const s of allSets) {
+      const pred = predict1RM(s);
+      if (!pred) continue;
+      if (!best || pred.estimated1RMWithRIR > best.estimate) {
+        best = { set: s, estimate: pred.estimated1RMWithRIR };
+      }
+    }
+
+    return best;
+  },
+  [allSets.length, exercise.id]
+);
+
+// 📊 PR latente
+const latentPR = useLiveQuery(
+  async () => {
+    const historical = await db.sets
+      .where('exerciseId')
+      .equals(exercise.id!)
+      .toArray();
+
+    const previousSessions = historical.filter(
+      (s) => s.sessionId !== sessionId
+    );
+
+    return detectLatentPR(previousSessions, allSets);
+  },
+  [exercise.id, sessionId, allSets.length]
+);
+
   // ───── 4. rirSuggestion (AGORA sim, depois de allSets) ─────
   const rirSuggestion = useLiveQuery(
     async () => {
@@ -629,6 +669,41 @@ function ExerciseCard({
               🏆 NOVO PR {newPRValue} kg
             </span>
           )}
+          {/* 📊 1RM em tempo real + PR latente */}
+{best1RM && (
+  <div className="bg-white/5 border border-white/5 rounded-2xl px-3 py-2 text-[11px] text-zinc-400 flex items-center justify-between gap-2">
+    <span>
+      📊 1RM estimado:{' '}
+      <strong className="text-accent-light">
+        {Math.round(best1RM.estimate * 10) / 10} kg
+      </strong>
+      <span className="text-zinc-600">
+        {' '}
+        (de {best1RM.set.reps}×{best1RM.set.weight} kg
+        {best1RM.set.rpe !== undefined &&
+          ` @ RIR ${Math.max(0, 10 - best1RM.set.rpe)}`}
+        )
+      </span>
+    </span>
+  </div>
+)}
+
+{latentPR && (
+  <div className="bg-purple-950/40 border border-purple-700/50 rounded-2xl px-3 py-2.5 text-xs text-purple-200 animate-slide-up">
+    <div className="font-semibold mb-1">
+      🔮 Você tem margem para mais
+    </div>
+    <div className="text-[11px] opacity-90 leading-relaxed">
+      Seu PR registrado é <strong>{latentPR.actualPR} kg</strong>. Mas sua série de{' '}
+      {latentPR.sourceSet.reps}×{latentPR.sourceSet.weight} kg (RIR {latentPR.sourceSet.rir})
+      indica um <strong>1RM teórico de {latentPR.estimated1RM} kg</strong>.
+      <br />
+      <span className="text-purple-300">
+        👉 Tente uma carga nova: <strong>{latentPR.nextPRTarget} kg</strong> na próxima sessão.
+      </span>
+    </div>
+  </div>
+)}
           {exercise.useRIR && exercise.targetRIR !== undefined && (
             <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-medium">
               🧠 RIR {exercise.targetRIR}

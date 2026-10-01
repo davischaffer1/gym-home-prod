@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
+import { getBestSetBy1RM } from './trainingScience';
 
 interface Props {
   onBack: () => void;
@@ -95,6 +96,15 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
     return acc;
   }, {});
 
+// ... dentro do SessionDetails, depois de grouped:
+const bestByExercise = new Map<number, number>();
+for (const [exId, list] of Object.entries(grouped)) {
+  const best = getBestSetBy1RM(list);
+  if (best) {
+    bestByExercise.set(Number(exId), best.estimated1RM);
+  }
+}
+
   return (
     <div className="border-t border-zinc-800 p-4 space-y-3">
       {/* 📝 Notas da sessão (se houver) */}
@@ -110,23 +120,35 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
         </p>
       )}
 
-      {Object.entries(grouped).map(([exId, list]) => {
-        const ex = exercises?.find((e) => e.id === Number(exId));
-        return (
-          <div key={exId}>
-            <div className="font-medium text-emerald-400">
-              {ex?.name ?? 'Exercício removido'}
-            </div>
-            <ul className="text-sm text-zinc-300 space-y-0.5 mt-1">
-              {list.map((s) => (
-                <li key={s.id}>
-                  Série {s.setNumber}: {s.reps} reps × {s.weight} kg
-                </li>
-              ))}
-            </ul>
+{Object.entries(grouped).map(([exId, list]) => {
+  const ex = exercises?.find((e) => e.id === Number(exId));
+  const best1RM = bestByExercise.get(Number(exId));
+  return (
+    <div key={exId}>
+      <div className="flex items-center justify-between">
+        <div className="font-medium text-accent-light">
+          {ex?.name ?? 'Exercício removido'}
+        </div>
+        {best1RM && (
+          <div className="text-[10px] text-purple-300">
+            📊 1RM est.: <strong>{Math.round(best1RM * 10) / 10} kg</strong>
           </div>
-        );
-      })}
+        )}
+      </div>
+      <ul className="text-xs text-zinc-300 space-y-1 mt-1">
+        {list.map((s) => (
+          <li key={s.id} className="flex justify-between">
+            <span>Série {s.setNumber}</span>
+            <span className="font-medium">
+              {s.reps} × {s.weight} kg
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+})}
+
     </div>
   );
 }

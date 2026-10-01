@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
-import { estimate1RM } from './trainingScience';
+import { estimate1RMPrecise } from './trainingScience';
 import {
   LineChart,
   Line,
@@ -127,7 +127,7 @@ function ExerciseChart({ exerciseName }: { exerciseName: string }) {
         const topReps = Math.max(
           ...list.filter((s) => s.weight === maxWeight).map((s) => s.reps)
         );
-        const oneRM = estimate1RM(maxWeight, topReps);
+        const oneRM = estimate1RMPrecise(maxWeight, topReps);
         return {
           date: new Date(session.startedAt).toLocaleDateString('pt-BR', {
             day: '2-digit',

@@ -56,17 +56,22 @@ const LOWER_COMPOUNDS = [
   'elevação pélvica',
 ];
 
-export function suggestLoadIncrement(
-  exerciseName: string,
-  currentWeight: number
-) {
+export function suggestLoadIncrement(exerciseName: string, currentWeight: number) {
   const lower = exerciseName.toLowerCase();
   const isLower = LOWER_COMPOUNDS.some((k) => lower.includes(k));
   const pct = isLower ? 0.05 : 0.025;
   const step = isLower ? 5 : 2.5;
-  // Arredonda para múltiplo de step
+
+  // Calcula o próximo múltiplo de step ACIMA de currentWeight
   const raw = currentWeight * (1 + pct);
-  return Math.round(raw / step) * step;
+  let next = Math.round(raw / step) * step;
+
+  // 👇 Garantia: sempre sobe pelo menos 1 step
+  if (next <= currentWeight) {
+    next = currentWeight + step;
+  }
+
+  return next;
 }
 
 /* ============================================================
@@ -385,3 +390,222 @@ export function analyzeRIRForNextSet(
       return 'Cardio';
     return 'Outros';
   }
+
+/* ============================================================
+   PREDIÇÃO DE 1RM — múltiplas fórmulas + ajuste por RIR
+   Base: Epley 1985, Brzycki 1993, Lombardi 1989, Lander 1985,
+         Jovanović & Flanagan 2014, García-Ramos et al. 2018
+   ============================================================ */
+
+/**
+ * Fórmula de Epley (1985).
+ * Boa em 2-10 reps.
+ */
+export function oneRMEpley(weight: number, reps: number): number {
+  if (reps === 1) return weight;
+  return weight * (1 + reps / 30);
+}
+
+/**
+ * Fórmula de Brzycki (1993).
+ * Boa em 1-8 reps.
+ */
+export function oneRMBrzycki(weight: number, reps: number): number {
+  if (reps === 1) return weight;
+  if (reps >= 37) return weight * 2;
+  return (weight * 36) / (37 - reps);
+}
+
+/**
+ * Fórmula de Lombardi (1989).
+ * Boa em 4-12 reps.
+ */
+export function oneRMLombardi(weight: number, reps: number): number {
+  if (reps === 1) return weight;
+  return weight * Math.pow(reps, 0.1);
+}
+
+/**
+ * Fórmula de Lander (1985).
+ * Boa em 1-10 reps.
+ */
+export function oneRMLander(weight: number, reps: number): number {
+  if (reps === 1) return weight;
+  const denom = 101.3 - 2.67123 * reps;
+  if (denom <= 0) return weight * 2;
+  return (100 * weight) / denom;
+}
+
+/**
+ * Estimativa de 1RM por média ponderada de múltiplas fórmulas.
+ *
+ * Pesos por faixa de reps (baseado em Jovanović & Flanagan 2014):
+ * - 1-3 reps:   Brzycki 40%, Epley 25%, Lander 20%, Lombardi 15%
+ * - 4-8 reps:   Epley 35%, Brzycki 30%, Lander 20%, Lombardi 15%
+ * - 9-12 reps:  Lombardi 40%, Epley 30%, Lander 15%, Brzycki 15%
+ * - 13-20 reps: Lombardi 60%, Epley 25%, Lander 15%
+ * - 20+ reps:   Lombardi 100% (outras fórmulas perdem precisão)
+ */
+export function estimate1RMPrecise(weight: number, reps: number): number {
+  if (reps <= 0 || weight <= 0) return 0;
+  if (reps === 1) return weight;
+
+  const epley = oneRMEpley(weight, reps);
+  const brzycki = oneRMBrzycki(weight, reps);
+  const lombardi = oneRMLombardi(weight, reps);
+  const lander = oneRMLander(weight, reps);
+
+  let estimate: number;
+
+  if (reps <= 3) {
+    estimate =
+      brzycki * 0.4 + epley * 0.25 + lander * 0.2 + lombardi * 0.15;
+  } else if (reps <= 8) {
+    estimate =
+      epley * 0.35 + brzycki * 0.3 + lander * 0.2 + lombardi * 0.15;
+  } else if (reps <= 12) {
+    estimate =
+      lombardi * 0.4 + epley * 0.3 + lander * 0.15 + brzycki * 0.15;
+  } else if (reps <= 20) {
+    estimate = lombardi * 0.6 + epley * 0.25 + lander * 0.15;
+  } else {
+    estimate = lombardi;
+  }
+
+  return Math.round(estimate * 10) / 10;
+}
+
+/**
+ * 1RM ajustado por RIR.
+ *
+ * Se você fez X reps com RIR Y, você CONSEGUIRIA fazer (X + Y) reps
+ * até a falha. Estimamos o 1RM com base nas reps totais possíveis.
+ *
+ * Base: García-Ramos et al. (2018), Zourdos et al. (2016).
+ */
+export function estimate1RMWithRIR(
+  weight: number,
+  reps: number,
+  rir?: number
+): number {
+  if (!rir || rir < 0) return estimate1RMPrecise(weight, reps);
+  const effectiveReps = reps + rir; // reps que você conseguiria
+  return estimate1RMPrecise(weight, effectiveReps);
+}
+
+/**
+ * Analisa uma série e retorna info completa de predição.
+ */
+export interface OneRMPrediction {
+  weight: number;
+  reps: number;
+  rir: number;
+  estimated1RM: number;        // sem ajuste de RIR
+  estimated1RMWithRIR: number; // com ajuste de RIR
+  potentialGain: number;       // estimated1RMWithRIR - weight
+}
+
+export function predict1RM(set: {
+  weight: number;
+  reps: number;
+  rpe?: number;
+  type?: string;
+}): OneRMPrediction | null {
+  if (set.type === 'warmup') return null;
+  if (!set.weight || !set.reps) return null;
+
+  const rir = set.rpe !== undefined ? Math.max(0, 10 - set.rpe) : 0;
+  const estimated1RM = estimate1RMPrecise(set.weight, set.reps);
+  const estimated1RMWithRIR = estimate1RMWithRIR(set.weight, set.reps, rir);
+
+  return {
+    weight: set.weight,
+    reps: set.reps,
+    rir,
+    estimated1RM,
+    estimated1RMWithRIR,
+    potentialGain: estimated1RMWithRIR - set.weight,
+  };
+}
+
+/**
+ * PR LATENTE
+ * Se o 1RM estimado passa do PR real, você provavelmente consegue
+ * mais do que já tentou. Mostra o "PR latente".
+ */
+export interface LatentPR {
+  actualPR: number;
+  estimated1RM: number;
+  latentGain: number;
+  sourceSet: { weight: number; reps: number; rir: number };
+  nextPRTarget?: number; // 👈 novo
+}
+
+export function detectLatentPR(
+  historicalSets: { weight: number; reps: number; rpe?: number; type?: string }[],
+  currentSessionSets: { weight: number; reps: number; rpe?: number; type?: string }[]
+): LatentPR | null {
+  const workingSets = historicalSets.filter((s) => s.type !== 'warmup');
+  if (workingSets.length === 0) return null;
+
+  const actualPR = Math.max(...workingSets.map((s) => s.weight));
+
+  const allWorking = [...workingSets, ...currentSessionSets].filter(
+    (s) => s.type !== 'warmup' && s.weight > 0 && s.reps > 0
+  );
+
+  let bestEstimate = 0;
+  let bestSource: { weight: number; reps: number; rir: number } | null = null;
+
+  for (const s of allWorking) {
+    const rir = s.rpe !== undefined ? Math.max(0, 10 - s.rpe) : 0;
+    const est = estimate1RMWithRIR(s.weight, s.reps, rir);
+    if (est > bestEstimate) {
+      bestEstimate = est;
+      bestSource = { weight: s.weight, reps: s.reps, rir };
+    }
+  }
+
+  if (!bestSource) return null;
+
+  // Só mostra se a série-base NÃO é a série atual (senão tá reclamando de si mesma)
+  if (bestSource.weight === actualPR && bestSource.reps <= 12) return null;
+
+  // Só reporta ganho significativo (>= 10% do PR)
+  const latentGain = bestEstimate - actualPR;
+  if (latentGain < actualPR * 0.1) return null;
+
+  // 👇 NOVO: em vez de "+X kg", mostra um alvo REALISTA
+  // O próximo PR sugerido é o próximo múltiplo de step acima do PR atual
+  // Ex: PR 50 → sugere tentar 55 kg (não 69)
+  const lower = bestSource ? '' : '';
+  const step = actualPR < 100 ? 5 : 10;
+  const nextPRTarget = Math.round((actualPR + step) / step) * step;
+
+  return {
+    actualPR,
+    estimated1RM: Math.round(bestEstimate * 10) / 10,
+    latentGain: Math.round(latentGain * 10) / 10,
+    sourceSet: bestSource,
+    nextPRTarget, // 👈 novo campo
+  };
+}
+
+/**
+ * Retorna a melhor série (por 1RM estimado) de uma lista.
+ */
+export function getBestSetBy1RM<
+  T extends { weight: number; reps: number; rpe?: number; type?: string }
+>(sets: T[]): { set: T; estimated1RM: number } | null {
+  let best: { set: T; estimated1RM: number } | null = null;
+  for (const s of sets) {
+    if (s.type === 'warmup') continue;
+    if (!s.weight || !s.reps) continue;
+    const rir = s.rpe !== undefined ? Math.max(0, 10 - s.rpe) : 0;
+    const est = estimate1RMWithRIR(s.weight, s.reps, rir);
+    if (!best || est > best.estimated1RM) {
+      best = { set: s, estimated1RM: est };
+    }
+  }
+  return best;
+}
