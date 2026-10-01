@@ -74,13 +74,14 @@ export default function App() {
     setExerciseName('');
   }
 
-  async function addExerciseFromLibrary(name: string) {
+  async function addExerciseFromLibrary(name: string, group?: string) {
     if (!selectedWorkout) return;
     const order = (exercises?.length ?? 0) + 1;
     await db.exercises.add({
       workoutId: selectedWorkout,
       name,
       order,
+      primaryGroup: group,
     });
   }
 
@@ -356,10 +357,11 @@ export default function App() {
 
       {/* Modal biblioteca */}
       {pickerOpen && (
-        <ExercisePicker
-          onAdd={addExerciseFromLibrary}
-          onClose={() => setPickerOpen(false)}
-        />
+        // No App.tsx, ao renderizar:
+<ExercisePicker
+  onAdd={(name, group) => addExerciseFromLibrary(name, group)}
+  onClose={() => setPickerOpen(false)}
+/>
       )}
     </div>
   );
@@ -449,6 +451,29 @@ function ExerciseItem({
     />
     <span className="text-zinc-400">🧠 RIR</span>
   </label>
+
+  {ex.primaryGroup && (
+  <span className="text-[10px] text-zinc-500 bg-white/5 px-2 py-0.5 rounded-full">
+    {ex.primaryGroup}
+  </span>
+)}
+
+<select
+  className="bg-bg-overlay rounded-lg px-2 py-1 text-[10px] border border-white/5 outline-none"
+  value={ex.primaryGroup ?? ''}
+  onChange={(e) =>
+    db.exercises.update(ex.id!, {
+      primaryGroup: e.target.value || undefined,
+    })
+  }
+>
+  <option value="">— grupo —</option>
+  {['Peito', 'Costas', 'Pernas', 'Ombros', 'Bíceps', 'Tríceps', 'Core', 'Cardio'].map((g) => (
+    <option key={g} value={g}>
+      {g}
+    </option>
+  ))}
+</select>
 
   {ex.useRIR && (
     <>

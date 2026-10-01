@@ -8,7 +8,7 @@ import {
 } from './exerciseLibrary';
 
 interface Props {
-  onAdd: (name: string) => void;
+  onAdd: (name: string, group?: string) => void;
   onClose: () => void;
 }
 
@@ -93,10 +93,8 @@ export default function ExercisePicker({ onAdd, onClose }: Props) {
           )}
           {filtered.map((ex) => (
             <button
-              key={ex.name}
-              onClick={() => {
-                onAdd(ex.name);
-              }}
+            key={ex.name}
+            onClick={() => onAdd(ex.name, ex.group)}
               className="w-full text-left bg-zinc-900 hover:bg-zinc-800 rounded-lg px-4 py-3 transition flex justify-between items-center"
             >
               <div>

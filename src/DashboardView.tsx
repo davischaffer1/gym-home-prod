@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
+import { countEffectiveSetsByGroup } from './trainingScience';
 
 interface Props {
   onBack: () => void;
@@ -26,6 +27,7 @@ export default function DashboardView({ onBack }: Props) {
 
   const sets = useLiveQuery(() => db.sets.toArray(), []);
   const meta = useLiveQuery(() => db.meta.toCollection().first(), []);
+  const exercises = useLiveQuery(() => db.exercises.toArray(), []);
 
   // ✅ Só depois dos hooks pode ter return
   if (!sessions || !sets) {
@@ -109,6 +111,16 @@ export default function DashboardView({ onBack }: Props) {
     }
   }
 
+  // 📊 Séries efetivas por grupo (últimas 1 semana)
+const effectiveSets = exercises
+? countEffectiveSetsByGroup(sets, exercises, 1)
+: [];
+
+// Só mostra grupos com pelo menos 1 série efetiva OU que estejam abaixo do alvo
+const visibleGroups = effectiveSets.filter(
+(g) => g.count > 0 || g.status === 'baixo'
+);
+
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6">
       <div className="flex justify-between items-center">
@@ -178,6 +190,28 @@ export default function DashboardView({ onBack }: Props) {
           icon="📦"
         />
       </div>
+
+      {/* 📊 Séries efetivas por grupo (última semana) */}
+{visibleGroups.length > 0 && (
+  <section className="bg-bg-surface border border-white/5 rounded-3xl p-4 space-y-4">
+    <div className="flex items-center justify-between">
+      <h2 className="font-semibold">🎯 Séries efetivas (semana)</h2>
+      <span className="text-[10px] text-zinc-500">
+        RIR ≤ 3
+      </span>
+    </div>
+
+    <div className="space-y-3">
+      {visibleGroups.map((g) => (
+        <VolumeBar key={g.group} group={g} />
+      ))}
+    </div>
+
+    <div className="text-[10px] text-zinc-500 pt-2 border-t border-white/5">
+      Base: Refalo et al. (2021, 2023), Schoenfeld et al. (2021)
+    </div>
+  </section>
+)}
 
       {/* Gráfico: volume por semana */}
       <section className="bg-zinc-900 rounded-2xl p-4">
@@ -364,4 +398,70 @@ function computeWeeklySessions(
     });
   }
   return data;
+}
+
+function VolumeBar({
+  group,
+}: {
+  group: {
+    group: string;
+    count: number;
+    target: { min: number; max: number; optimal: number };
+    status: 'baixo' | 'ótimo' | 'alto';
+  };
+}) {
+  const { count, target, status } = group;
+  const pct = Math.min(100, (count / target.max) * 100);
+
+  const statusColor = {
+    baixo: 'text-blue-400',
+    ótimo: 'text-emerald-400',
+    alto: 'text-amber-400',
+  }[status];
+
+  const barColor = {
+    baixo: 'bg-blue-500',
+    ótimo: 'bg-emerald-500',
+    alto: 'bg-amber-500',
+  }[status];
+
+  const statusLabel = {
+    baixo: '↓ abaixo',
+    ótimo: '✓ ótimo',
+    alto: '↑ alto',
+  }[status];
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">{group.group}</span>
+          <span className={`text-[10px] ${statusColor}`}>
+            {statusLabel}
+          </span>
+        </div>
+        <span className="text-xs text-zinc-400">
+          <strong className="text-white">{count}</strong>
+          <span className="text-zinc-500">
+            {' '}/ {target.min}–{target.max}
+          </span>
+        </span>
+      </div>
+      <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden relative">
+        {/* Faixa ótima (marcador visual) */}
+        <div
+          className="absolute top-0 h-full bg-white/5"
+          style={{
+            left: `${(target.min / target.max) * 100}%`,
+            width: `${((target.max - target.min) / target.max) * 100}%`,
+          }}
+        />
+        {/* Barra de progresso */}
+        <div
+          className={`h-full ${barColor} transition-all duration-500 rounded-full`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
 }

@@ -246,3 +246,142 @@ export function analyzeRIRForNextSet(
     targetRIR,
   };
 }
+
+/* ============================================================
+   SÉRIES EFETIVAS
+   Base: Refalo et al. (2021, 2023), Baz-Valle et al. (2022)
+
+   Série efetiva = RIR <= 3 OU tipo "failure" / próxima da falha.
+   - Aquecimento NUNCA conta
+   - RIR 4+ NÃO conta
+   - Falha técnica (sem RPE) também não conta como efetiva
+   ============================================================ */
+
+   export interface EffectiveSetCount {
+    group: string;
+    count: number;
+    target: { min: number; max: number; optimal: number };
+    status: "baixo" | "ótimo" | "alto";
+  }
+  
+  /**
+   * Verifica se uma série conta como "efetiva".
+   */
+  export function isEffectiveSet(set: {
+    type?: string;
+    rpe?: number;
+    reps?: number;
+    weight?: number;
+  }): boolean {
+    // Aquecimento nunca conta
+    if (set.type === 'warmup') return false;
+  
+    // Falha sempre conta
+    if (set.type === 'failure') return true;
+  
+    // Se tem RPE, usar como referência
+    if (set.rpe !== undefined && set.rpe !== null) {
+      const rir = 10 - set.rpe;
+      return rir <= 3;
+    }
+  
+    // Se não tem RPE, não conta (não dá pra saber a proximidade da falha)
+    return false;
+  }
+  
+  /**
+   * Conta séries efetivas por grupo muscular nas últimas N semanas.
+   */
+  export function countEffectiveSetsByGroup(
+    sets: {
+      exerciseId: number;
+      type?: string;
+      rpe?: number;
+      reps?: number;
+      weight?: number;
+      createdAt: number;
+    }[],
+    exercises: { id?: number; name: string; primaryGroup?: string }[],
+    weeks: number = 1
+  ): EffectiveSetCount[] {
+    const cutoff = Date.now() - weeks * 7 * 24 * 60 * 60 * 1000;
+  
+    const byGroup = new Map<string, number>();
+  
+    for (const s of sets) {
+      if (s.createdAt < cutoff) continue;
+      if (!isEffectiveSet(s)) continue;
+  
+      const ex = exercises.find((e) => e.id === s.exerciseId);
+      if (!ex) continue;
+  
+      const group = ex.primaryGroup ?? guessGroupFromName(ex.name);
+      byGroup.set(group, (byGroup.get(group) ?? 0) + 1);
+    }
+  
+    const ALL_GROUPS = [
+      'Peito',
+      'Costas',
+      'Pernas',
+      'Ombros',
+      'Bíceps',
+      'Tríceps',
+      'Core',
+      'Cardio',
+    ];
+  
+    return ALL_GROUPS.map((group) => {
+      const count = byGroup.get(group) ?? 0;
+      const target = getVolumeTarget(group);
+      let status: 'baixo' | 'ótimo' | 'alto' = 'ótimo';
+      if (count < target.min) status = 'baixo';
+      else if (count > target.max) status = 'alto';
+      return { group, count, target, status };
+    });
+  }
+  
+  /**
+   * Alvo de séries efetivas por grupo (por semana).
+   * Base: Schoenfeld 2021, Refalo 2021, Baz-Valle 2022.
+   *
+   * - Grupos grandes (peito, costas, pernas): 12-18 séries/semana
+   * - Grupos médios (ombros): 10-16
+   * - Grupos pequenos (bíceps, tríceps, core): 8-12
+   */
+  export function getVolumeTarget(group: string) {
+    const g = group.toLowerCase();
+    if (['peito', 'costas', 'pernas'].includes(g)) {
+      return { min: 12, max: 18, optimal: 15 };
+    }
+    if (['ombros', 'core'].includes(g)) {
+      return { min: 10, max: 16, optimal: 13 };
+    }
+    if (['bíceps', 'tríceps'].includes(g)) {
+      return { min: 8, max: 12, optimal: 10 };
+    }
+    return { min: 8, max: 15, optimal: 12 };
+  }
+  
+  /**
+   * Tenta adivinhar o grupo muscular pelo nome do exercício
+   * (fallback para exercícios sem primaryGroup).
+   */
+  export function guessGroupFromName(name: string): string {
+    const n = name.toLowerCase();
+    if (n.includes('supino') || n.includes('crucifixo') || n.includes('peck') || n.includes('crossover') || n.includes('flexão') || n.includes('flexao'))
+      return 'Peito';
+    if (n.includes('barra fixa') || n.includes('puxada') || n.includes('remada') || n.includes('pulldown') || n.includes('pullover') || n.includes('terra'))
+      return 'Costas';
+    if (n.includes('agachamento') || n.includes('leg press') || n.includes('cadeira') || n.includes('mesa') || n.includes('stiff') || n.includes('afundo') || n.includes('passada') || n.includes('panturrilha') || n.includes('hack') || n.includes('bulgaro') || n.includes('búlgaro'))
+      return 'Pernas';
+    if (n.includes('desenvolvimento') || n.includes('elevação lateral') || n.includes('elevacao lateral') || n.includes('elevação frontal') || n.includes('encolhimento') || n.includes('face pull') || n.includes('crucifixo inverso'))
+      return 'Ombros';
+    if (n.includes('rosca')) return 'Bíceps';
+    if (n.includes('tríceps') || n.includes('triceps') || n.includes('testa') || n.includes('francês') || n.includes('frances') || n.includes('mergulho') || n.includes('pulley'))
+      return 'Tríceps';
+    if (n.includes('prancha') || n.includes('abdominal') || n.includes('crunch') || n.includes('ab wheel') || n.includes('russian') || n.includes('dead bug'))
+      return 'Core';
+    if (n.includes('esteira') || n.includes('bicicleta') || n.includes('elíptico') || n.includes('eliptico') || n.includes('escada') || n.includes('remo ergômetro') || n.includes('corda') || n.includes('burpee'))
+      return 'Cardio';
+    return 'Outros';
+  }
