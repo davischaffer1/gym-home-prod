@@ -3,17 +3,18 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Exercise, type SetType } from './db';
 import RestTimer from './RestTimer';
 import {
+  requestNotificationPermission,
+  showActiveSessionNotification,
+  updateActiveSessionNotification,
+  clearActiveSessionNotification,
+  showPRNotification,
+  listenToNotificationActions,
+} from './richNotifications';
+import {
   analyzeExerciseProgress,
   detectPlateau,
   suggestLoadIncrement,
-  type SessionSetSummary,
 } from './trainingScience';
-import { checkAndUnlockAchievements } from './achievementEngine';
-import {
-  startSessionNotification,
-  updateSessionNotification,
-  stopSessionNotification,
-} from './sessionNotification';
 
 interface Props {
   workoutId: number;
@@ -27,27 +28,33 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   const [restSeconds, setRestSeconds] = useState<number | null>(null);
   const [showNotes, setShowNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
-  const interval = setInterval(() => {
-    updateSessionNotification('Treino', Date.now());
-  }, 30000);
 
-  // Cria a sessão uma única vez
+  // Cria a sessão + registra notificação
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
-      // Pede permissão de notificação na primeira vez
-      if ('Notification' in window && Notification.permission === 'default') {
-        try {
-          await Notification.requestPermission();
-        } catch {}
-      }
-      const id = await db.sessions.add({ workoutId, startedAt: Date.now() });
-      startSessionNotification('Treino', Date.now());
-      if (!cancelled) setSessionId(id);
+      await requestNotificationPermission();
+
+      const id = await db.sessions.add({
+        workoutId,
+        startedAt: Date.now(),
+      });
+      if (cancelled) return;
+      setSessionId(id);
+
+      await showActiveSessionNotification('Treino', Date.now());
     })();
+
+    const interval = setInterval(() => {
+      if (!cancelled) {
+        updateActiveSessionNotification('Treino', Date.now());
+      }
+    }, 60000);
+
     return () => {
-      clearInterval(interval);
       cancelled = true;
+      clearInterval(interval);
     };
   }, [workoutId]);
 
@@ -62,22 +69,37 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   );
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
 
-  // Sincroniza notas quando a sessão carrega
+  // Sincroniza notas da sessão
   useEffect(() => {
     if (session?.notes !== undefined) {
       setNotesDraft(session.notes);
     }
   }, [session?.notes]);
 
+  // Ouve ações dos botões da notificação
+  useEffect(() => {
+    const cleanup = listenToNotificationActions(async (action) => {
+      if (action === 'finish' || action === 'finish-session') {
+        if (sessionId) {
+          await clearActiveSessionNotification();
+          await db.sessions.update(sessionId, { finishedAt: Date.now() });
+          setFinished(true);
+        }
+      }
+      if (action === '+30s') {
+        setRestSeconds((r) => (r ?? 0) + 30);
+      }
+      if (action === 'skip') {
+        setRestSeconds(null);
+      }
+    });
+    return cleanup;
+  }, [sessionId]);
+
   async function finish() {
     if (!sessionId) return;
-    stopSessionNotification();
+    await clearActiveSessionNotification();
     await db.sessions.update(sessionId, { finishedAt: Date.now() });
-    const newBadges = await checkAndUnlockAchievements();
-    if (newBadges.length > 0) {
-      // vibra e mostra aviso
-      if ('vibrate' in navigator) navigator.vibrate?.([100, 50, 100, 50, 300]);
-    }
     setFinished(true);
   }
 
@@ -102,7 +124,11 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
 
   // Returns condicionais
   if (sessionId === null || !session) {
-    return <p className="p-4 text-zinc-400">Iniciando sessão...</p>;
+    return (
+      <div className="min-h-screen flex items-center justify-center safe-top safe-bottom">
+        <p className="text-zinc-400">Iniciando sessão...</p>
+      </div>
+    );
   }
 
   if (finished) {
@@ -117,101 +143,109 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   }
 
   if (!exercises) {
-    return <p className="p-4 text-zinc-400">Carregando exercícios...</p>;
+    return (
+      <div className="min-h-screen flex items-center justify-center safe-top safe-bottom">
+        <p className="text-zinc-400">Carregando exercícios...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6 pb-40">
-      {/* Cabeçalho */}
-      <div className="flex justify-between items-center gap-2 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold">Sessão em andamento</h1>
-          <ElapsedTime
-            startedAt={session.startedAt}
-            pausedAt={session.pausedAt}
-            totalPausedMs={session.totalPausedMs}
-          />
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowNotes((s) => !s)}
-            className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
-          >
-            📝
-          </button>
-          <button
-            onClick={togglePause}
-            className={`px-3 py-2 rounded-lg text-sm ${
-              session.pausedAt
-                ? 'bg-amber-600 hover:bg-amber-500'
-                : 'bg-zinc-800 hover:bg-zinc-700'
-            }`}
-          >
-            {session.pausedAt ? '▶' : '⏸'}
-          </button>
-          <button
-            onClick={finish}
-            className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-medium"
-          >
-            Finalizar
-          </button>
-        </div>
-      </div>
-
-      {/* Notas */}
-      {showNotes && (
-        <div className="bg-zinc-900 rounded-2xl p-4 space-y-3">
-          <label className="text-sm text-zinc-400">Anotações da sessão</label>
-          <textarea
-            className="w-full bg-zinc-800 rounded-lg px-3 py-2 outline-none min-h-[100px] resize-y"
-            placeholder="Ex: ombro esquerdo incomodou no supino..."
-            value={notesDraft}
-            onChange={(e) => setNotesDraft(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={saveNotes}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2 rounded-lg font-medium"
-            >
-              Salvar notas
-            </button>
-            <button
-              onClick={() => setShowNotes(false)}
-              className="flex-1 bg-zinc-800 hover:bg-zinc-700 py-2 rounded-lg"
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Navegação entre exercícios */}
-      <ExerciseNav exercises={exercises} sessionId={sessionId} />
-
-      {/* Cards de exercício */}
-      <div className="space-y-4">
-        {exercises.map((ex) => (
-          <div key={ex.id} id={`ex-${ex.id}`}>
-            <ExerciseCard
-              exercise={ex}
-              sessionId={sessionId}
-              defaultRest={profile?.restSeconds ?? 90}
-              onSetAdded={(sec) => setRestSeconds(sec)}
+    <div className="min-h-screen safe-top safe-bottom safe-x pb-40">
+      <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Sessão em andamento
+            </h1>
+            <ElapsedTime
+              startedAt={session.startedAt}
+              pausedAt={session.pausedAt}
+              totalPausedMs={session.totalPausedMs}
             />
           </div>
-        ))}
-      </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => setShowNotes((s) => !s)}
+              className="w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center"
+            >
+              📝
+            </button>
+            <button
+              onClick={togglePause}
+              className={`w-10 h-10 rounded-2xl active:scale-95 transition-all flex items-center justify-center ${
+                session.pausedAt
+                  ? 'bg-amber-500/20 border border-amber-500/40 text-amber-300'
+                  : 'bg-white/5 hover:bg-white/10'
+              }`}
+            >
+              {session.pausedAt ? '▶' : '⏸'}
+            </button>
+          </div>
+        </div>
 
-      <button
-        onClick={finish}
-        className="w-full bg-red-600 hover:bg-red-500 py-3 rounded-lg font-semibold"
-      >
-        🏁 Finalizar treino
-      </button>
+        {/* Notas */}
+        {showNotes && (
+          <div className="bg-bg-surface border border-white/5 rounded-3xl p-4 space-y-3 animate-slide-up">
+            <label className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">
+              Anotações da sessão
+            </label>
+            <textarea
+              className="w-full bg-bg-elevated border border-white/5 rounded-2xl px-4 py-3 outline-none min-h-[100px] resize-y focus:border-accent/50 transition-all"
+              placeholder="Ex: ombro esquerdo incomodou no supino..."
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={saveNotes}
+                className="flex-1 bg-accent hover:bg-accent-light py-2.5 rounded-2xl font-semibold transition-all active:scale-[0.98]"
+              >
+                Salvar notas
+              </button>
+              <button
+                onClick={() => setShowNotes(false)}
+                className="flex-1 bg-white/5 hover:bg-white/10 py-2.5 rounded-2xl transition-all active:scale-[0.98]"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Navegação entre exercícios */}
+        <ExerciseNav exercises={exercises} sessionId={sessionId} />
+
+        {/* Cards de exercício */}
+        <div className="space-y-4">
+          {exercises.map((ex) => (
+            <div key={ex.id} id={`ex-${ex.id}`}>
+              <ExerciseCard
+                exercise={ex}
+                sessionId={sessionId}
+                defaultRest={profile?.restSeconds ?? 90}
+                onSetAdded={(sec) => setRestSeconds(sec)}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Finalizar */}
+        <button
+          onClick={finish}
+          className="w-full bg-red-600 hover:bg-red-500 py-4 rounded-2xl font-semibold shadow-lg transition-all active:scale-[0.98] mt-6"
+        >
+          🏁 Finalizar treino
+        </button>
+      </div>
 
       {/* Timer de descanso */}
       {restSeconds !== null && (
-        <RestTimer seconds={restSeconds} onClose={() => setRestSeconds(null)} />
+        <RestTimer
+          seconds={restSeconds}
+          onClose={() => setRestSeconds(null)}
+        />
       )}
     </div>
   );
@@ -243,9 +277,12 @@ function ElapsedTime({
   const s = sec % 60;
 
   return (
-    <p className="text-sm text-emerald-400 flex items-center gap-2">
-      ⏱ {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
-      {pausedAt && <span className="text-amber-400 text-xs">⏸ pausado</span>}
+    <p className="text-sm text-accent-light flex items-center gap-2 mt-0.5">
+      <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+      {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
+      {pausedAt && (
+        <span className="text-amber-400 text-xs">⏸ pausado</span>
+      )}
     </p>
   );
 }
@@ -273,7 +310,7 @@ function ExerciseNav({
   const doneIds = new Set((sets ?? []).map((s) => s.exerciseId));
 
   return (
-    <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-zinc-950/90 backdrop-blur border-b border-zinc-800">
+    <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-bg-base/80 backdrop-blur-xl border-b border-white/5">
       <div className="flex gap-2 overflow-x-auto no-scrollbar">
         {exercises.map((ex) => {
           const done = doneIds.has(ex.id!);
@@ -281,13 +318,13 @@ function ExerciseNav({
             <button
               key={ex.id}
               onClick={() => scrollTo(ex.id!)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+              className={`flex-shrink-0 px-3.5 py-2 rounded-full text-xs font-medium transition-all active:scale-95 ${
                 done
-                  ? 'bg-emerald-700 text-white'
-                  : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
+                  ? 'bg-accent text-white shadow-glow'
+                  : 'bg-white/5 hover:bg-white/10 text-zinc-300'
               }`}
             >
-              {done && '✔ '}
+              {done && '✓ '}
               {ex.order}. {ex.name}
             </button>
           );
@@ -310,19 +347,18 @@ function ExerciseCard({
   defaultRest: number;
   onSetAdded: (seconds: number) => void;
 }) {
-  const [rpe, setRpe] = useState<number | undefined>(undefined);
   const [reps, setReps] = useState('');
   const [weight, setWeight] = useState('');
   const [type, setType] = useState<SetType>('normal');
   const [note, setNote] = useState('');
   const [showNote, setShowNote] = useState(false);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
+  const [rpe, setRpe] = useState<number | undefined>(undefined);
 
-  // TUT: cronômetro ativo
+  // TUT
   const [tutStart, setTutStart] = useState<number | null>(null);
   const [tutElapsed, setTutElapsed] = useState(0);
 
-  // TUT rodando → atualiza a cada segundo
   useEffect(() => {
     if (tutStart === null) return;
     const t = setInterval(() => {
@@ -332,85 +368,91 @@ function ExerciseCard({
   }, [tutStart]);
 
   // Última série antes desta sessão
-  const lastSet = useLiveQuery(async () => {
-    try {
-      const all = await db.sets
-        .where('exerciseId')
-        .equals(exercise.id!)
-        .reverse()
-        .sortBy('createdAt');
-      return all.find((s) => s && s.sessionId !== sessionId) ?? null;
-    } catch {
-      return null;
-    }
-  }, [exercise.id, sessionId]);
+  const lastSet = useLiveQuery(
+    async () => {
+      try {
+        const all = await db.sets
+          .where('exerciseId')
+          .equals(exercise.id!)
+          .reverse()
+          .sortBy('createdAt');
+        return all.find((s) => s && s.sessionId !== sessionId) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    [exercise.id, sessionId]
+  );
 
-  // PR anterior
-  const pr = useLiveQuery(async () => {
-    try {
-      const all = await db.sets
-        .where('exerciseId')
-        .equals(exercise.id!)
-        .toArray();
-      const previous = all.filter(
-        (s) =>
-          s &&
-          s.sessionId !== sessionId &&
-          typeof s.weight === 'number' &&
-          !isNaN(s.weight) &&
-          s.type !== 'warmup'
-      );
-      if (previous.length === 0) return null;
-      const maxW = Math.max(...previous.map((s) => s.weight));
-      const best = previous.filter((s) => s.weight === maxW);
-      return {
-        weight: maxW,
-        reps: Math.max(...best.map((s) => s.reps)),
-      };
-    } catch {
-      return null;
-    }
-  }, [exercise.id, sessionId]);
+  // PR anterior (excluindo sessão atual)
+  const pr = useLiveQuery(
+    async () => {
+      try {
+        const all = await db.sets
+          .where('exerciseId')
+          .equals(exercise.id!)
+          .toArray();
+        const previous = all.filter(
+          (s) =>
+            s &&
+            s.sessionId !== sessionId &&
+            typeof s.weight === 'number' &&
+            !isNaN(s.weight) &&
+            s.type !== 'warmup'
+        );
+        if (previous.length === 0) return null;
+        const maxW = Math.max(...previous.map((s) => s.weight));
+        const best = previous.filter((s) => s.weight === maxW);
+        return {
+          weight: maxW,
+          reps: Math.max(...best.map((s) => s.reps)),
+        };
+      } catch {
+        return null;
+      }
+    },
+    [exercise.id, sessionId]
+  );
 
-  // 📊 Analisa progresso desse exercício nas últimas sessões
-  const analysis = useLiveQuery(async () => {
-    try {
-      const all = await db.sets
-        .where('exerciseId')
-        .equals(exercise.id!)
-        .toArray();
-      // exclui a sessão atual da análise
-      const previous = all.filter((s) => s.sessionId !== sessionId);
-      if (previous.length === 0) return null;
+  // Análise (sugestão de carga / platô)
+  const analysis = useLiveQuery(
+    async () => {
+      try {
+        const all = await db.sets
+          .where('exerciseId')
+          .equals(exercise.id!)
+          .toArray();
+        const previous = all.filter((s) => s.sessionId !== sessionId);
+        if (previous.length === 0) return null;
 
-      const targetMin = exercise.targetRepsMin ?? 8;
-      const targetMax = exercise.targetRepsMax ?? 12;
+        const targetMin = exercise.targetRepsMin ?? 8;
+        const targetMax = exercise.targetRepsMax ?? 12;
 
-      const summaries = analyzeExerciseProgress(
-        previous,
-        exercise.id!,
-        targetMin,
-        targetMax,
-        6
-      );
+        const summaries = analyzeExerciseProgress(
+          previous,
+          exercise.id!,
+          targetMin,
+          targetMax,
+          6
+        );
 
-      const plateau = detectPlateau(summaries);
+        const plateau = detectPlateau(summaries);
+        const lastTwo = summaries.slice(0, 2);
+        const hitTopAllTwo =
+          lastTwo.length === 2 && lastTwo.every((s) => s.allSetsHitTop);
+        const currentWeight = summaries[0]?.maxWeight ?? 0;
+        const suggestedWeight =
+          hitTopAllTwo && currentWeight > 0
+            ? suggestLoadIncrement(exercise.name, currentWeight)
+            : null;
 
-      // Sugestão: bateu o topo da faixa em TODAS as séries nas 2 últimas sessões
-      const lastTwo = summaries.slice(0, 2);
-      const hitTopAllTwo =
-        lastTwo.length === 2 && lastTwo.every((s) => s.allSetsHitTop);
-      const currentWeight = summaries[0]?.maxWeight ?? 0;
-      const suggestedWeight =
-        hitTopAllTwo && currentWeight > 0
-          ? suggestLoadIncrement(exercise.name, currentWeight)
-          : null;
-
-      return { summaries, plateau, suggestedWeight, hitTopAllTwo };
-    } catch {
-      return null;
-    }
-  }, [exercise.id, sessionId, exercise.targetRepsMin, exercise.targetRepsMax]);
+        return { summaries, plateau, suggestedWeight, hitTopAllTwo };
+      } catch {
+        return null;
+      }
+    },
+    [exercise.id, sessionId, exercise.targetRepsMin, exercise.targetRepsMax]
+  );
 
   // Séries da sessão atual
   const setsRaw = useLiveQuery(
@@ -427,7 +469,6 @@ function ExerciseCard({
     (s) => s && typeof s.weight === 'number' && typeof s.reps === 'number'
   );
 
-  // Soma de TUT da sessão (todas as séries desse exercício)
   const totalTut = allSets.reduce((acc, s) => acc + (s.tutSeconds ?? 0), 0);
 
   async function addSet(customReps?: number, customWeight?: number) {
@@ -448,23 +489,25 @@ function ExerciseCard({
       type,
       tutSeconds,
       note: note.trim() || undefined,
-      rpe, // 👈 novo
+      rpe,
     });
 
-    // 🔔 vibra PR (só conta tipos de trabalho)
-    if (type !== 'warmup' && pr && w > pr.weight && 'vibrate' in navigator) {
-      navigator.vibrate?.([100, 50, 100, 50, 200]);
+    // 🏆 Notificação de PR + vibração
+    if (type !== 'warmup' && pr && w > pr.weight) {
+      if ('vibrate' in navigator) {
+        navigator.vibrate?.([100, 50, 100, 50, 200]);
+      }
+      showPRNotification(exercise.name, w);
     }
 
-    // reset campos
-    setRpe(undefined);
+    // Reset
     setReps('');
     setWeight('');
     setNote('');
     setShowNote(false);
+    setRpe(undefined);
     setTutStart(null);
     setTutElapsed(0);
-    // tipo volta para "normal" mas mantém se for myo (para facilitar)
     if (type !== 'myo') setType('normal');
 
     onSetAdded(defaultRest);
@@ -506,23 +549,27 @@ function ExerciseCard({
 
   return (
     <div
-      className={`rounded-2xl p-4 space-y-3 transition ${
+      className={`rounded-3xl p-4 space-y-3 border transition-all ${
         beatPR
-          ? 'bg-amber-950/30 border border-amber-700'
+          ? 'bg-amber-950/30 border-amber-700/50 shadow-glow'
           : done
-          ? 'bg-emerald-950/40 border border-emerald-800'
-          : 'bg-zinc-900'
+          ? 'bg-accent/5 border-accent/30'
+          : 'bg-bg-surface border-white/5'
       }`}
     >
       {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-2 flex-wrap">
-        <h3 className="text-lg font-semibold flex items-center gap-2 flex-wrap">
-          {done && !beatPR && <span className="text-emerald-400">✔</span>}
+        <h3 className="text-base font-semibold flex items-center gap-2 flex-wrap">
+          {done && !beatPR && (
+            <span className="w-5 h-5 rounded-full bg-accent/20 text-accent text-xs flex items-center justify-center">
+              ✓
+            </span>
+          )}
           <span>
             {exercise.order}. {exercise.name}
           </span>
           {beatPR && (
-            <span className="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full font-bold">
+            <span className="text-[10px] bg-amber-500 text-black px-2 py-0.5 rounded-full font-bold">
               🏆 NOVO PR {newPRValue} kg
             </span>
           )}
@@ -530,20 +577,20 @@ function ExerciseCard({
         <div className="flex flex-col items-end gap-0.5">
           {pr && (
             <span
-              className={`text-xs ${
-                beatPR ? 'text-zinc-500 line-through' : 'text-amber-400'
+              className={`text-[10px] ${
+                beatPR ? 'text-zinc-600 line-through' : 'text-amber-400'
               }`}
             >
-              🏆 PR: {pr.weight} kg × {pr.reps}
+              🏆 {pr.weight} kg × {pr.reps}
             </span>
           )}
           {targetMin && targetMax && (
-            <span className="text-xs text-emerald-400">
+            <span className="text-[10px] text-accent-light">
               🎯 {targetMin}–{targetMax} reps
             </span>
           )}
           {done && (
-            <span className="text-xs text-emerald-400">
+            <span className="text-[10px] text-accent-light">
               {allSets.length} série{allSets.length > 1 ? 's' : ''}
               {totalTut > 0 && ` · TUT ${totalTut}s`}
             </span>
@@ -551,45 +598,44 @@ function ExerciseCard({
         </div>
       </div>
 
-      {/* 📝 Nota permanente do exercício */}
+      {/* Nota permanente do exercício */}
       {exercise.note && (
-        <div className="bg-zinc-800/60 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-300 italic">
+        <div className="bg-white/5 border border-white/5 rounded-2xl px-3 py-2 text-xs text-zinc-300 italic">
           📝 {exercise.note}
         </div>
       )}
 
-      {/* 💡 Sugestão de carga */}
+      {/* Sugestão de carga */}
       {analysis?.suggestedWeight && (
-        <div className="bg-emerald-950/50 border border-emerald-700 rounded-lg px-3 py-2 text-xs text-emerald-300 flex items-center justify-between gap-2">
+        <div className="bg-accent/10 border border-accent/30 rounded-2xl px-3 py-2.5 text-xs text-accent-light flex items-center justify-between gap-2 animate-slide-up">
           <span>
-            💡 Você bateu <strong>{exercise.targetRepsMax} reps</strong> em
-            todas as séries nas 2 últimas sessões. Considere subir para{' '}
+            💡 Bateu {exercise.targetRepsMax} reps em todas as séries nas
+            últimas 2 sessões. Suba para{' '}
             <strong>{analysis.suggestedWeight} kg</strong>.
           </span>
           <button
-            onClick={() => {
-              setWeight(String(analysis.suggestedWeight));
-            }}
-            className="bg-emerald-700 hover:bg-emerald-600 px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap"
+            onClick={() => setWeight(String(analysis.suggestedWeight))}
+            className="bg-accent hover:bg-accent-light px-2.5 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap active:scale-95 transition-all"
           >
             Usar
           </button>
         </div>
       )}
 
-      {/* 📉 Platô detectado */}
+      {/* Platô detectado */}
       {analysis?.plateau && !analysis.suggestedWeight && (
-        <div className="bg-red-950/40 border border-red-800 rounded-lg px-3 py-2 text-xs text-red-300">
-          📉 <strong>Platô detectado</strong> — sua carga não sobe há 3 sessões.
-          Considere mudar a variação (reps, tempo, drop-set) ou fazer um deload.
+        <div className="bg-red-950/40 border border-red-800/50 rounded-2xl px-3 py-2 text-xs text-red-300">
+          📉 <strong>Platô detectado</strong> — carga não sobe há 3 sessões.
+          Mude a variação ou faça deload.
         </div>
       )}
 
       {/* Lista de séries */}
       {allSets.length > 0 && (
-        <ul className="space-y-1">
+        <ul className="space-y-1.5">
           {allSets.map((s) => {
-            const isPRSet = !!pr && s.weight > pr.weight && s.type !== 'warmup';
+            const isPRSet =
+              !!pr && s.weight > pr.weight && s.type !== 'warmup';
             const t = s.type ?? 'normal';
             const inRange =
               targetMin &&
@@ -604,22 +650,21 @@ function ExerciseCard({
             return (
               <li
                 key={s.id}
-                className={`flex justify-between items-center rounded-lg px-3 py-2 text-sm gap-2 ${
+                className={`flex justify-between items-center rounded-2xl px-3 py-2 text-xs gap-2 ${
                   isPRSet
-                    ? 'bg-amber-900/40 border border-amber-700'
-                    : 'bg-zinc-800'
+                    ? 'bg-amber-900/30 border border-amber-700/40'
+                    : 'bg-bg-elevated border border-white/5'
                 }`}
               >
-                <span className="flex flex-wrap items-center gap-1.5">
+                <span className="flex flex-wrap items-center gap-1.5 min-w-0">
                   {isPRSet && '🏆'}
-                  <span>
-                    Série {s.setNumber}: <strong>{s.reps}</strong> reps ×{' '}
-                    <strong>{s.weight}</strong> kg
+                  <span className="font-medium">
+                    S{s.setNumber}: {s.reps} × {s.weight} kg
                   </span>
 
                   {t !== 'normal' && (
                     <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded ${typeBadgeStyle(
+                      className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${typeBadgeStyle(
                         t
                       )}`}
                     >
@@ -627,41 +672,39 @@ function ExerciseCard({
                     </span>
                   )}
 
-                  {inRange && (
-                    <span className="text-[10px] text-emerald-400">🎯</span>
-                  )}
+                  {inRange && <span className="text-[10px]">🎯</span>}
                   {belowRange && (
-                    <span className="text-[10px] text-blue-400">↓ abaixo</span>
+                    <span className="text-[10px] text-blue-400">↓</span>
                   )}
                   {aboveRange && (
-                    <span className="text-[10px] text-amber-400">↑ acima</span>
-                  )}
-
-                  {s.rpe && (
-                    <span className="text-[10px] text-zinc-400">
-                      RPE {s.rpe}
-                    </span>
+                    <span className="text-[10px] text-amber-400">↑</span>
                   )}
 
                   {s.tutSeconds !== undefined && (
-                    <span className="text-[10px] text-zinc-400">
-                      TUT {s.tutSeconds}s
+                    <span className="text-[10px] text-zinc-500">
+                      {s.tutSeconds}s
+                    </span>
+                  )}
+
+                  {s.rpe && (
+                    <span className="text-[10px] text-zinc-500">
+                      RPE {s.rpe}
                     </span>
                   )}
                 </span>
 
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 flex-shrink-0">
                   {s.note && (
                     <span
-                      className="text-[10px] text-zinc-400 italic truncate max-w-[100px]"
+                      className="text-[10px] text-zinc-500 italic truncate max-w-[80px]"
                       title={s.note}
                     >
-                      📝 {s.note}
+                      📝
                     </span>
                   )}
                   <button
                     onClick={() => removeSet(s.id!)}
-                    className="text-red-400 hover:text-red-300 text-xs"
+                    className="text-red-400 hover:text-red-300 text-xs w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-500/10 active:scale-90 transition-all"
                   >
                     ×
                   </button>
@@ -677,7 +720,7 @@ function ExerciseCard({
         <button
           type="button"
           onClick={quickAdd}
-          className="w-full bg-emerald-700 hover:bg-emerald-600 py-2 rounded-lg text-sm font-medium"
+          className="w-full bg-accent/15 hover:bg-accent/25 border border-accent/30 py-2.5 rounded-2xl text-xs font-medium text-accent-light active:scale-[0.98] transition-all"
         >
           ⚡ Repetir última ({lastSet.reps} × {lastSet.weight} kg)
         </button>
@@ -686,41 +729,41 @@ function ExerciseCard({
       {/* Input principal */}
       <div className="flex gap-2">
         <input
-          className="flex-1 bg-zinc-800 rounded-lg px-3 py-2 outline-none"
-          placeholder={lastSet ? `${lastSet.reps} reps` : 'Reps'}
+          className="flex-1 min-w-0 bg-bg-elevated border border-white/5 rounded-2xl px-3 py-3 text-base outline-none focus:border-accent/50 transition-all placeholder:text-zinc-500 text-center"
+          placeholder={lastSet ? `${lastSet.reps}` : 'reps'}
           inputMode="numeric"
           value={reps}
           onChange={(e) => setReps(e.target.value)}
         />
         <input
-          className="flex-1 bg-zinc-800 rounded-lg px-3 py-2 outline-none"
-          placeholder={lastSet ? `${lastSet.weight} kg` : 'Carga (kg)'}
+          className="flex-1 min-w-0 bg-bg-elevated border border-white/5 rounded-2xl px-3 py-3 text-base outline-none focus:border-accent/50 transition-all placeholder:text-zinc-500 text-center"
+          placeholder={lastSet ? `${lastSet.weight}` : 'kg'}
           inputMode="decimal"
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
         />
         <button
           onClick={() => addSet()}
-          className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg font-medium"
+          className="bg-accent hover:bg-accent-light w-14 rounded-2xl font-bold text-xl flex items-center justify-center shadow-glow active:scale-95 transition-all"
         >
           +
         </button>
       </div>
 
-      {/* Barra de extras: tipo, TUT, nota */}
-      <div className="flex gap-2 items-center flex-wrap">
-        {/* Botão de tipo */}
+      {/* Barra de extras: tipo, TUT, RPE, nota */}
+      <div className="flex gap-1.5 items-center flex-wrap">
+        {/* Tipo */}
         <div className="relative">
           <button
             onClick={() => setShowTypeMenu((v) => !v)}
-            className={`text-xs px-2.5 py-1.5 rounded-lg border ${typeBadgeStyle(
+            className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-medium transition-all active:scale-95 ${typeBadgeStyle(
               type
             )}`}
           >
             🏷 {typeLabel(type)}
           </button>
           {showTypeMenu && (
-            <div className="absolute z-20 mt-1 bg-zinc-900 border border-zinc-700 rounded-lg p-1 shadow-xl w-48">
+            <div className="absolute bottom-full mb-1 z-20 bg-bg-overlay border border-white/10 rounded-2xl p-1 shadow-elevated w-44 animate-scale-in">
               {(
                 [
                   'normal',
@@ -738,8 +781,8 @@ function ExerciseCard({
                     setType(t);
                     setShowTypeMenu(false);
                   }}
-                  className={`w-full text-left text-xs px-3 py-2 rounded-md hover:bg-zinc-800 ${
-                    type === t ? 'text-emerald-400' : 'text-zinc-300'
+                  className={`w-full text-left text-xs px-3 py-2 rounded-xl hover:bg-white/5 ${
+                    type === t ? 'text-accent-light' : 'text-zinc-300'
                   }`}
                 >
                   {typeLabel(t)}
@@ -749,32 +792,13 @@ function ExerciseCard({
           )}
         </div>
 
-        {/* RPE rápido */}
-        <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1">
-          <span className="text-[10px] text-zinc-500">RPE</span>
-          <select
-            value={rpe ?? ''}
-            onChange={(e) =>
-              setRpe(e.target.value ? parseInt(e.target.value) : undefined)
-            }
-            className="bg-transparent text-xs outline-none text-zinc-200"
-          >
-            <option value="">–</option>
-            {[6, 7, 8, 9, 10].map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Botão TUT */}
+        {/* TUT */}
         <button
           onClick={toggleTut}
-          className={`text-xs px-2.5 py-1.5 rounded-lg border ${
+          className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-medium transition-all active:scale-95 ${
             tutStart !== null
-              ? 'bg-red-600/30 border-red-600 text-red-300'
-              : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+              ? 'bg-red-500/20 border-red-500/40 text-red-300'
+              : 'bg-white/5 border-white/5 text-zinc-400'
           }`}
         >
           ⏱ {tutStart !== null ? formatTut(tutElapsed) : 'TUT'}
@@ -783,19 +807,38 @@ function ExerciseCard({
         {tutElapsed > 0 && (
           <button
             onClick={resetTut}
-            className="text-xs px-2 py-1.5 text-zinc-500 hover:text-zinc-300"
+            className="text-[10px] px-2 py-1.5 text-zinc-600 hover:text-zinc-400"
           >
             zerar
           </button>
         )}
 
+        {/* RPE */}
+        <div className="flex items-center gap-1 bg-white/5 border border-white/5 rounded-xl px-2 py-1.5">
+          <span className="text-[10px] text-zinc-500">RPE</span>
+          <select
+            value={rpe ?? ''}
+            onChange={(e) =>
+              setRpe(e.target.value ? parseInt(e.target.value) : undefined)
+            }
+            className="bg-transparent text-[10px] outline-none text-zinc-200"
+          >
+            <option value="">–</option>
+            {[6, 7, 8, 9, 10].map((v) => (
+              <option key={v} value={v} className="bg-bg-overlay">
+                {v}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Nota */}
         <button
           onClick={() => setShowNote((v) => !v)}
-          className={`text-xs px-2.5 py-1.5 rounded-lg border ${
+          className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-medium transition-all active:scale-95 ${
             note
-              ? 'bg-emerald-950/60 border-emerald-700 text-emerald-300'
-              : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+              ? 'bg-accent/20 border-accent/40 text-accent-light'
+              : 'bg-white/5 border-white/5 text-zinc-400'
           }`}
         >
           📝
@@ -805,8 +848,8 @@ function ExerciseCard({
       {/* Campo de nota */}
       {showNote && (
         <input
-          className="w-full bg-zinc-800 rounded-lg px-3 py-2 outline-none text-sm"
-          placeholder="Nota rápida da série (ex: falhou na 8ª)"
+          className="w-full bg-bg-elevated border border-white/5 rounded-2xl px-3 py-2.5 outline-none text-sm focus:border-accent/50 transition-all animate-slide-up"
+          placeholder="Nota da série (ex: falhou na 8ª)"
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
@@ -820,13 +863,13 @@ function ExerciseCard({
 function typeLabel(t: SetType): string {
   switch (t) {
     case 'warmup':
-      return 'Aquecimento';
+      return 'Aquec.';
     case 'drop':
-      return 'Drop-set';
+      return 'Drop';
     case 'myo':
-      return 'Myo-reps';
+      return 'Myo';
     case 'restpause':
-      return 'Rest-pause';
+      return 'R-Pause';
     case 'cluster':
       return 'Cluster';
     case 'failure':
@@ -839,19 +882,19 @@ function typeLabel(t: SetType): string {
 function typeBadgeStyle(t: SetType): string {
   switch (t) {
     case 'warmup':
-      return 'bg-zinc-800 border-zinc-700 text-zinc-400';
+      return 'bg-white/5 border-white/5 text-zinc-500';
     case 'drop':
-      return 'bg-red-950/60 border-red-800 text-red-300';
+      return 'bg-red-500/15 border-red-500/30 text-red-300';
     case 'myo':
-      return 'bg-purple-950/60 border-purple-800 text-purple-300';
+      return 'bg-purple-500/15 border-purple-500/30 text-purple-300';
     case 'restpause':
-      return 'bg-orange-950/60 border-orange-800 text-orange-300';
+      return 'bg-orange-500/15 border-orange-500/30 text-orange-300';
     case 'cluster':
-      return 'bg-blue-950/60 border-blue-800 text-blue-300';
+      return 'bg-blue-500/15 border-blue-500/30 text-blue-300';
     case 'failure':
-      return 'bg-yellow-950/60 border-yellow-800 text-yellow-300';
+      return 'bg-yellow-500/15 border-yellow-500/30 text-yellow-300';
     default:
-      return 'bg-zinc-800 border-zinc-700 text-zinc-300';
+      return 'bg-white/5 border-white/5 text-zinc-400';
   }
 }
 
@@ -883,7 +926,11 @@ function SessionSummary({
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
 
   if (!session || !sets || !exercises) {
-    return <p className="p-4 text-zinc-400">Calculando resumo...</p>;
+    return (
+      <div className="min-h-screen flex items-center justify-center safe-top safe-bottom">
+        <p className="text-zinc-400">Calculando resumo...</p>
+      </div>
+    );
   }
 
   const finishedAt = session.finishedAt ?? Date.now();
@@ -898,107 +945,122 @@ function SessionSummary({
   const userWeight = profile?.weightKg ?? 75;
   const volumePerMin = totalVolume / Math.max(1, durationMin);
   const met = volumePerMin < 2.5 ? 3.5 : volumePerMin < 5 ? 5 : 6.5;
-  const calories = Math.round(((met * 3.5 * userWeight) / 200) * durationMin);
-
-  // Conta quantos PRs foram batidos
-  const prCount = countPRs(sets, exercises);
+  const calories = Math.round((met * 3.5 * userWeight) / 200 * durationMin);
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <div className="text-center space-y-2">
-        <div className="text-5xl">🏆</div>
-        <h1 className="text-2xl font-bold">Treino concluído!</h1>
-        <p className="text-zinc-400 text-sm">
-          {new Date(startedAt).toLocaleString('pt-BR')}
-        </p>
-        {prCount > 0 && (
-          <p className="text-amber-400 font-semibold">
-            🎉 {prCount} novo{prCount > 1 ? 's' : ''} PR
-            {prCount > 1 ? 's' : ''} batido{prCount > 1 ? 's' : ''}!
+    <div className="min-h-screen safe-top safe-bottom safe-x">
+      <div className="max-w-lg mx-auto px-4 pt-6 pb-12 space-y-5 animate-slide-up">
+        {/* Hero */}
+        <div className="text-center space-y-2">
+          <div className="text-6xl mb-2">🏆</div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Treino concluído!
+          </h1>
+          <p className="text-zinc-500 text-sm">
+            {new Date(startedAt).toLocaleString('pt-BR')}
           </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Duração" value={`${durationMin} min`} icon="⏱" />
-        <StatCard
-          label="Exercícios"
-          value={String(uniqueExercises)}
-          icon="🏋️"
-        />
-        <StatCard label="Séries" value={String(totalSets)} icon="🔁" />
-        <StatCard label="Repetições" value={String(totalReps)} icon="🔢" />
-        <StatCard
-          label="Volume total"
-          value={`${totalVolume.toLocaleString('pt-BR')} kg`}
-          icon="📦"
-        />
-        <StatCard
-          label="Calorias (est.)"
-          value={`${calories} kcal`}
-          icon="🔥"
-        />
-      </div>
-
-      <div className="space-y-3">
-        <h2 className="font-semibold text-lg">Detalhes</h2>
-        {groupByExercise(sets, exercises).map((g) => (
-          <div key={g.exerciseId} className="bg-zinc-900 rounded-2xl p-4">
-            <div className="font-medium text-emerald-400 mb-2">
-              {g.exerciseName}
-            </div>
-            <ul className="text-sm text-zinc-300 space-y-0.5">
-              {g.sets.map((s) => (
-                <li key={s.id}>
-                  Série {s.setNumber}: {s.reps} reps × {s.weight} kg
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-
-      {session.notes && (
-        <div className="bg-zinc-900 rounded-2xl p-4">
-          <div className="text-sm text-zinc-400 mb-1">📝 Notas</div>
-          <p className="text-sm italic text-zinc-300">{session.notes}</p>
         </div>
-      )}
 
-      <div className="flex gap-2">
-        <button
-          onClick={onRepeat}
-          className="flex-1 bg-emerald-600 hover:bg-emerald-500 py-3 rounded-lg font-semibold"
-        >
-          🔄 Refazer treino
-        </button>
-        <button
-          onClick={onClose}
-          className="flex-1 bg-zinc-800 hover:bg-zinc-700 py-3 rounded-lg font-semibold"
-        >
-          Concluir
-        </button>
+        {/* Cards */}
+        <div className="grid grid-cols-2 gap-3">
+          <SummaryCard icon="⏱" value={`${durationMin} min`} label="Duração" />
+          <SummaryCard icon="🏋️" value={String(uniqueExercises)} label="Exercícios" />
+          <SummaryCard icon="🔁" value={String(totalSets)} label="Séries" />
+          <SummaryCard icon="🔢" value={String(totalReps)} label="Repetições" />
+          <SummaryCard
+            icon="📦"
+            value={`${totalVolume.toLocaleString('pt-BR')} kg`}
+            label="Volume"
+          />
+          <SummaryCard
+            icon="🔥"
+            value={`${calories} kcal`}
+            label="Calorias"
+            highlight
+          />
+        </div>
+
+        {/* Detalhes */}
+        <div className="space-y-3">
+          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-1">
+            Detalhes
+          </h2>
+          {groupByExercise(sets, exercises).map((g) => (
+            <div
+              key={g.exerciseId}
+              className="bg-bg-surface border border-white/5 rounded-3xl p-4"
+            >
+              <div className="font-medium text-accent-light mb-2">
+                {g.exerciseName}
+              </div>
+              <ul className="text-xs text-zinc-300 space-y-1">
+                {g.sets.map((s) => (
+                  <li key={s.id} className="flex justify-between">
+                    <span>Série {s.setNumber}</span>
+                    <span className="font-medium">
+                      {s.reps} × {s.weight} kg
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* Notas */}
+        {session.notes && (
+          <div className="bg-bg-surface border border-white/5 rounded-3xl p-4">
+            <div className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-2">
+              📝 Notas
+            </div>
+            <p className="text-sm italic text-zinc-300">{session.notes}</p>
+          </div>
+        )}
+
+        {/* Ações */}
+        <div className="flex gap-2 pt-2">
+          <button
+            onClick={onRepeat}
+            className="flex-1 bg-accent hover:bg-accent-light py-4 rounded-2xl font-semibold shadow-glow active:scale-[0.98] transition-all"
+          >
+            🔄 Refazer
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 bg-white/5 hover:bg-white/10 py-4 rounded-2xl font-semibold active:scale-[0.98] transition-all"
+          >
+            Concluir
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-/* ---------- Helpers ---------- */
-
-function StatCard({
-  label,
-  value,
+function SummaryCard({
   icon,
+  value,
+  label,
+  highlight,
 }: {
-  label: string;
-  value: string;
   icon: string;
+  value: string;
+  label: string;
+  highlight?: boolean;
 }) {
   return (
-    <div className="bg-zinc-900 rounded-2xl p-4 text-center">
+    <div
+      className={`rounded-3xl p-4 text-center border ${
+        highlight
+          ? 'bg-accent/10 border-accent/30 shadow-glow'
+          : 'bg-bg-surface border-white/5'
+      }`}
+    >
       <div className="text-2xl mb-1">{icon}</div>
-      <div className="text-lg font-bold">{value}</div>
-      <div className="text-xs text-zinc-400">{label}</div>
+      <div className="text-lg font-bold tracking-tight">{value}</div>
+      <div className="text-[10px] text-zinc-500 mt-0.5 uppercase tracking-wider">
+        {label}
+      </div>
     </div>
   );
 }
@@ -1029,23 +1091,4 @@ function groupByExercise(
     map.get(s.exerciseId)!.sets.push(s);
   }
   return Array.from(map.values());
-}
-
-// Conta quantos exercícios tiveram PR batido NA SESSÃO ATUAL
-function countPRs(
-  sessionSets: {
-    exerciseId: number;
-    weight: number;
-    sessionId: number;
-  }[],
-  exercises: { id?: number; name: string }[]
-) {
-  // (simplificado — só conta 1 vez por exercício se a carga da sessão
-  // for maior que o PR anterior)
-  const grouped = new Map<number, number>(); // exerciseId → max peso na sessão
-  for (const s of sessionSets) {
-    const cur = grouped.get(s.exerciseId) ?? 0;
-    if (s.weight > cur) grouped.set(s.exerciseId, s.weight);
-  }
-  return grouped.size; // simplificação — vamos refinar isso depois
 }
