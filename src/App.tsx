@@ -6,9 +6,10 @@ import HistoryView from './HistoryView';
 import ProfileView from './ProfileView';
 import DashboardView from './DashboardView';
 import ExercisePicker from './ExercisePicker';
-import ExerciseProgressView from './ExerciseProgressView';
 import AchievementsView from './AchievementsView';
 import CalendarView from './CalendarView';
+import ExerciseProgressView from './ExerciseProgressView';
+import { Button, Card, Input, SectionTitle } from './ui';
 
 type View =
   | 'home'
@@ -20,7 +21,6 @@ type View =
   | 'calendar';
 
 export default function App() {
-  // ---------- Estados ----------
   const [workoutName, setWorkoutName] = useState('');
   const [selectedWorkout, setSelectedWorkout] = useState<number | null>(null);
   const [exerciseName, setExerciseName] = useState('');
@@ -29,7 +29,6 @@ export default function App() {
   const [view, setView] = useState<View>('home');
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  // ---------- Dados ----------
   const workouts = useLiveQuery(async () => {
     const all = await db.workouts.toArray();
     return all.sort((a, b) => b.createdAt - a.createdAt);
@@ -48,7 +47,6 @@ export default function App() {
 
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
 
-  // ---------- Ações: treinos ----------
   async function createWorkout() {
     if (!workoutName.trim()) return;
     await db.workouts.add({
@@ -65,7 +63,6 @@ export default function App() {
     if (selectedWorkout === id) setSelectedWorkout(null);
   }
 
-  // ---------- Ações: exercícios ----------
   async function addExercise() {
     if (!exerciseName.trim() || !selectedWorkout) return;
     const order = (exercises?.length ?? 0) + 1;
@@ -85,39 +82,57 @@ export default function App() {
       name,
       order,
     });
-    // não fecha o picker — permite adicionar vários seguidos
   }
 
   async function removeExercise(id: number) {
     await db.exercises.delete(id);
   }
 
-  // ---------- Telas alternativas ----------
+  // ───── Telas alternativas ─────
   if (view === 'history') {
-    return <HistoryView onBack={() => setView('home')} />;
+    return (
+      <div className="min-h-screen safe-top safe-bottom">
+        <HistoryView onBack={() => setView('home')} />
+      </div>
+    );
   }
-
   if (view === 'profile') {
-    return <ProfileView onBack={() => setView('home')} />;
+    return (
+      <div className="min-h-screen safe-top safe-bottom">
+        <ProfileView onBack={() => setView('home')} />
+      </div>
+    );
   }
-
   if (view === 'progress') {
-    return <DashboardView onBack={() => setView('home')} />;
+    return (
+      <div className="min-h-screen safe-top safe-bottom">
+        <DashboardView onBack={() => setView('home')} />
+      </div>
+    );
   }
-
   if (view === 'exercise') {
-    return <ExerciseProgressView onBack={() => setView('home')} />;
+    return (
+      <div className="min-h-screen safe-top safe-bottom">
+        <ExerciseProgressView onBack={() => setView('home')} />
+      </div>
+    );
   }
-
   if (view === 'achievements') {
-    return <AchievementsView onBack={() => setView('home')} />;
+    return (
+      <div className="min-h-screen safe-top safe-bottom">
+        <AchievementsView onBack={() => setView('home')} />
+      </div>
+    );
   }
-
   if (view === 'calendar') {
-    return <CalendarView onBack={() => setView('home')} />;
+    return (
+      <div className="min-h-screen safe-top safe-bottom">
+        <CalendarView onBack={() => setView('home')} />
+      </div>
+    );
   }
 
-  // ---------- Tela de sessão ----------
+  // ───── Sessão ─────
   if (inSession && selectedWorkout) {
     return (
       <SessionView
@@ -129,221 +144,298 @@ export default function App() {
     );
   }
 
-  // ---------- Tela principal ----------
+  // ───── Tela principal ─────
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex justify-between items-center gap-2 flex-wrap">
-        <h1 className="text-3xl font-bold">
-          💪 {profile?.name ? `Olá, ${profile.name}` : 'Meu Treino'}
-        </h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setView('progress')}
-            className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
-          >
-            📊
-          </button>
-          <button
-            onClick={() => setView('history')}
-            className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
-          >
-            📜
-          </button>
-          <button
-            onClick={() => setView('exercise')}
-            className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
-          >
-            📈
-          </button>
+    <div className="min-h-screen safe-top safe-bottom safe-x">
+      <div className="max-w-lg mx-auto px-4 pt-4 pb-32 space-y-6">
+        {/* Header */}
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
+              {new Date().toLocaleDateString('pt-BR', {
+                weekday: 'long',
+              })}
+            </p>
+            <h1 className="text-3xl font-bold tracking-tight mt-0.5 truncate">
+              {profile?.name ? `Olá, ${profile.name}` : 'Meu Treino'} 💪
+            </h1>
+          </div>
           <button
             onClick={() => setView('profile')}
-            className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
+            className="w-12 h-12 rounded-2xl bg-bg-elevated border border-white/5 flex items-center justify-center text-xl active:scale-95 transition-all flex-shrink-0"
           >
             👤
           </button>
-          <button
-            onClick={() => setView('achievements')}
-            className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
-          >
-            🏅
-          </button>
-          <button
-            onClick={() => setView('calendar')}
-            className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
-          >
-            📅
-          </button>
-        </div>
-      </div>
+        </header>
 
-      {/* Criar treino */}
-      <section className="bg-zinc-900 rounded-2xl p-4 space-y-3">
-        <h2 className="text-xl font-semibold">Novo treino</h2>
-        <div className="flex gap-2">
-          <input
-            className="flex-1 bg-zinc-800 rounded-lg px-3 py-2 outline-none"
-            placeholder="Ex: Treino A - Peito e Tríceps"
-            value={workoutName}
-            onChange={(e) => setWorkoutName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && createWorkout()}
+        {/* Quick actions — grade 2x2 */}
+        <div className="grid grid-cols-4 gap-2">
+          <QuickAction
+            icon="📊"
+            label="Progresso"
+            onClick={() => setView('progress')}
           />
-          <button
-            onClick={createWorkout}
-            className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg font-medium"
-          >
-            Criar
-          </button>
+          <QuickAction
+            icon="📈"
+            label="Exercícios"
+            onClick={() => setView('exercise')}
+          />
+          <QuickAction
+            icon="📅"
+            label="Calendário"
+            onClick={() => setView('calendar')}
+          />
+          <QuickAction
+            icon="🏅"
+            label="Conquistas"
+            onClick={() => setView('achievements')}
+          />
         </div>
-      </section>
 
-      {/* Lista de treinos */}
-      <section className="bg-zinc-900 rounded-2xl p-4 space-y-3">
-        <h2 className="text-xl font-semibold">Meus treinos</h2>
-        {workouts?.length === 0 && (
-          <p className="text-zinc-500 text-sm">Nenhum treino ainda.</p>
-        )}
-        <ul className="space-y-2">
-          {workouts?.map((w) => (
-            <li key={w.id} className="flex gap-2">
+        {/* Criar treino */}
+        <section>
+          <SectionTitle>Novo treino</SectionTitle>
+          <Card>
+            <div className="flex gap-2">
+              <Input
+                value={workoutName}
+                onChange={setWorkoutName}
+                placeholder="Ex: Treino A - Peito"
+                onKeyDown={(e) => e.key === 'Enter' && createWorkout()}
+              />
+              <Button onClick={createWorkout} className="flex-shrink-0">
+                +
+              </Button>
+            </div>
+          </Card>
+        </section>
+
+        {/* Lista de treinos */}
+        <section>
+          <SectionTitle
+            action={
               <button
-                onClick={() => setSelectedWorkout(w.id!)}
-                className={`flex-1 text-left px-4 py-3 rounded-lg transition ${
-                  selectedWorkout === w.id
-                    ? 'bg-emerald-700'
-                    : 'bg-zinc-800 hover:bg-zinc-700'
-                }`}
+                onClick={() => setView('history')}
+                className="text-xs text-accent hover:text-accent-light font-medium"
               >
-                {w.name}
+                Ver histórico
               </button>
-              <button
-                onClick={() => deleteWorkout(w.id!)}
-                className="bg-zinc-800 hover:bg-red-900 px-3 rounded-lg text-sm"
-              >
-                🗑
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+            }
+          >
+            Meus treinos
+          </SectionTitle>
 
-      {/* Exercícios do treino selecionado */}
-      {selectedWorkout && (
-        <section className="bg-zinc-900 rounded-2xl p-4 space-y-3">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Exercícios</h2>
-            <button
-              onClick={() => setPickerOpen(true)}
-              className="bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg text-sm font-medium"
-            >
-              📚 Biblioteca
-            </button>
-          </div>
-
-          {/* Input manual */}
-          <div className="flex gap-2">
-            <input
-              className="flex-1 bg-zinc-800 rounded-lg px-3 py-2 outline-none"
-              placeholder="Adicionar manualmente..."
-              value={exerciseName}
-              onChange={(e) => setExerciseName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addExercise()}
-            />
-            <button
-              onClick={addExercise}
-              className="bg-zinc-700 hover:bg-zinc-600 px-4 py-2 rounded-lg font-medium"
-            >
-              Adicionar
-            </button>
-          </div>
-
-          {/* Lista de exercícios */}
-          {exercises?.length === 0 && (
-            <p className="text-zinc-500 text-sm">
-              Nenhum exercício. Adicione pela biblioteca ou manualmente.
-            </p>
+          {workouts?.length === 0 && (
+            <Card>
+              <p className="text-zinc-500 text-sm text-center py-6">
+                Nenhum treino ainda. Crie o primeiro acima 👆
+              </p>
+            </Card>
           )}
 
-          <ul className="space-y-2">
-            {exercises?.map((ex) => (
-              <li
-                key={ex.id}
-                className="bg-zinc-800 px-3 py-3 rounded-lg space-y-2"
-              >
-                <div className="flex justify-between items-center">
-                  <span>
-                    {ex.order}. {ex.name}
-                  </span>
+          <div className="space-y-2">
+            {workouts?.map((w) => {
+              const isSelected = selectedWorkout === w.id;
+              return (
+                <div
+                  key={w.id}
+                  className={`group relative rounded-3xl border transition-all duration-200 overflow-hidden ${
+                    isSelected
+                      ? 'bg-accent/10 border-accent/40 shadow-glow'
+                      : 'bg-bg-surface border-white/5'
+                  }`}
+                >
                   <button
-                    onClick={() => removeExercise(ex.id!)}
-                    className="text-red-400 hover:text-red-300 text-xs"
+                    onClick={() => setSelectedWorkout(isSelected ? null : w.id!)}
+                    className="w-full text-left px-5 py-4 flex items-center justify-between active:scale-[0.99] transition-transform"
                   >
-                    remover
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-base truncate">
+                        {w.name}
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-0.5">
+                        {isSelected ? 'Toque para fechar' : 'Toque para abrir'}
+                      </div>
+                    </div>
+                    <div
+                      className={`text-xl transition-transform ${
+                        isSelected ? 'rotate-90' : ''
+                      }`}
+                    >
+                      {isSelected ? '▾' : '›'}
+                    </div>
                   </button>
+
+                  {/* Botão de apagar (só quando selecionado) */}
+                  {isSelected && (
+                    <div className="px-5 pb-4 -mt-1 animate-fade-in">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => deleteWorkout(w.id!)}
+                          className="flex-1"
+                        >
+                          🗑 Apagar treino
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-zinc-500">🎯 Reps alvo:</span>
-                  <input
-                    className="w-14 bg-zinc-900 rounded px-2 py-1 outline-none text-center"
-                    inputMode="numeric"
-                    placeholder="min"
-                    value={ex.targetRepsMin ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                        ? parseInt(e.target.value)
-                        : undefined;
-                      db.exercises.update(ex.id!, { targetRepsMin: v });
-                    }}
-                  />
-                  <span className="text-zinc-500">até</span>
-                  <input
-                    className="w-14 bg-zinc-900 rounded px-2 py-1 outline-none text-center"
-                    inputMode="numeric"
-                    placeholder="max"
-                    value={ex.targetRepsMax ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                        ? parseInt(e.target.value)
-                        : undefined;
-                      db.exercises.update(ex.id!, { targetRepsMax: v });
-                    }}
-                  />
-                </div>
-
-                {/* 📝 Nota permanente do exercício */}
-                <input
-                  className="w-full bg-zinc-900 rounded px-2 py-1.5 outline-none text-xs"
-                  placeholder="📝 Nota (ex: ombro esquerdo, aumentar carga em 12 reps)"
-                  value={ex.note ?? ''}
-                  onChange={(e) => {
-                    db.exercises.update(ex.id!, {
-                      note: e.target.value || undefined,
-                    });
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
-
-          {/* Iniciar treino */}
-          <button
-            onClick={() => setInSession(true)}
-            disabled={!exercises || exercises.length === 0}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed py-3 rounded-lg font-semibold"
-          >
-            ▶️ Iniciar treino
-          </button>
+              );
+            })}
+          </div>
         </section>
-      )}
 
-      {/* Modal da biblioteca */}
+        {/* Exercícios do treino selecionado */}
+        {selectedWorkout && (
+          <section className="animate-slide-up">
+            <SectionTitle
+              action={
+                <button
+                  onClick={() => setPickerOpen(true)}
+                  className="text-xs text-accent hover:text-accent-light font-medium"
+                >
+                  📚 Biblioteca
+                </button>
+              }
+            >
+              Exercícios
+            </SectionTitle>
+
+            <Card className="space-y-3">
+              {/* Input manual */}
+              <div className="flex gap-2">
+                <Input
+                  value={exerciseName}
+                  onChange={setExerciseName}
+                  placeholder="Adicionar exercício..."
+                  onKeyDown={(e) => e.key === 'Enter' && addExercise()}
+                />
+                <Button
+                  onClick={addExercise}
+                  variant="secondary"
+                  className="flex-shrink-0"
+                >
+                  +
+                </Button>
+              </div>
+
+              {exercises?.length === 0 && (
+                <p className="text-zinc-500 text-sm text-center py-4">
+                  Nenhum exercício. Adicione pela biblioteca ou manualmente.
+                </p>
+              )}
+
+              {/* Lista */}
+              <div className="space-y-2">
+                {exercises?.map((ex) => (
+                  <ExerciseItem
+                    key={ex.id}
+                    ex={ex}
+                    onRemove={() => removeExercise(ex.id!)}
+                  />
+                ))}
+              </div>
+            </Card>
+
+            {/* Botão iniciar */}
+            <div className="mt-4">
+              <Button
+                fullWidth
+                size="lg"
+                disabled={!exercises || exercises.length === 0}
+                onClick={() => setInSession(true)}
+              >
+                ▶ Iniciar treino
+              </Button>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* Modal biblioteca */}
       {pickerOpen && (
         <ExercisePicker
           onAdd={addExerciseFromLibrary}
           onClose={() => setPickerOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+/* ---------- Componentes locais ---------- */
+
+function QuickAction({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-bg-surface border border-white/5 hover:bg-bg-elevated active:scale-95 transition-all"
+    >
+      <span className="text-2xl">{icon}</span>
+      <span className="text-[10px] text-zinc-400 font-medium">{label}</span>
+    </button>
+  );
+}
+
+function ExerciseItem({
+  ex,
+  onRemove,
+}: {
+  ex: { id?: number; name: string; order: number; targetRepsMin?: number; targetRepsMax?: number; note?: string };
+  onRemove: () => void;
+}) {
+  return (
+    <div className="bg-bg-elevated rounded-2xl p-3 space-y-2 border border-white/5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-6 h-6 rounded-full bg-accent/20 text-accent text-xs font-bold flex items-center justify-center flex-shrink-0">
+            {ex.order}
+          </span>
+          <span className="font-medium text-sm truncate">{ex.name}</span>
+        </div>
+        <button
+          onClick={onRemove}
+          className="text-red-400 hover:text-red-300 text-xs px-2 py-1 active:scale-90 transition"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 text-xs">
+        <span className="text-zinc-500">🎯</span>
+        <input
+          className="w-14 bg-bg-overlay rounded-lg px-2 py-1.5 outline-none text-center text-xs border border-white/5 focus:border-accent/50"
+          inputMode="numeric"
+          placeholder="min"
+          value={ex.targetRepsMin ?? ''}
+          onChange={(e) => {
+            const v = e.target.value ? parseInt(e.target.value) : undefined;
+            db.exercises.update(ex.id!, { targetRepsMin: v });
+          }}
+        />
+        <span className="text-zinc-600">—</span>
+        <input
+          className="w-14 bg-bg-overlay rounded-lg px-2 py-1.5 outline-none text-center text-xs border border-white/5 focus:border-accent/50"
+          inputMode="numeric"
+          placeholder="max"
+          value={ex.targetRepsMax ?? ''}
+          onChange={(e) => {
+            const v = e.target.value ? parseInt(e.target.value) : undefined;
+            db.exercises.update(ex.id!, { targetRepsMax: v });
+          }}
+        />
+        <span className="text-zinc-600 text-[10px]">reps</span>
+      </div>
     </div>
   );
 }

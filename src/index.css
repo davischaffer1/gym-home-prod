@@ -1,14 +1,50 @@
-body {
-  background-color: #09090b;
-  color: #f4f4f5;
-  font-family: system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
+/* Reset básico */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
+html, body, #root {
+  height: 100%;
+  background-color: #0a0a0c;
+  color: #fafafa;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* Safe area para iPhone (notch + home indicator) */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Esconder scrollbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Inputs sem zoom automático no iOS (precisa font-size >= 16px) */
+input, textarea, select {
+  font-size: 16px;
+}
+
+/* Botões com feedback tátil */
+button:active {
+  transform: scale(0.97);
+  transition: transform 0.1s;
+}
+
+/* Animação de entrada para modais e cards */
+.animate-in {
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }

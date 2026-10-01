@@ -1,14 +1,11 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-    />
-    <meta name="theme-color" content="#09090b" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+    <meta name="theme-color" content="#0a0a0c" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Treino" />
     <link rel="icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
@@ -19,8 +16,44 @@
         theme: {
           extend: {
             colors: {
-              zinc: {
-                950: '#09090b',
+              bg: {
+                base: '#0a0a0c',
+                surface: '#121216',
+                elevated: '#1a1a20',
+                overlay: '#24242c',
+              },
+              accent: {
+                DEFAULT: '#10b981',
+                light: '#34d399',
+                dark: '#059669',
+              },
+            },
+            fontFamily: {
+              sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Inter', 'system-ui', 'sans-serif'],
+            },
+            borderRadius: {
+              '2xl': '1.25rem',
+              '3xl': '1.75rem',
+            },
+            boxShadow: {
+              glow: '0 0 40px -10px rgba(16, 185, 129, 0.3)',
+              card: '0 8px 32px rgba(0, 0, 0, 0.4)',
+              elevated: '0 12px 48px rgba(0, 0, 0, 0.6)',
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.3s ease-out',
+              'slide-up': 'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+              'scale-in': 'scaleIn 0.2s ease-out',
+            },
+            keyframes: {
+              fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+              slideUp: {
+                '0%': { opacity: '0', transform: 'translateY(12px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              scaleIn: {
+                '0%': { opacity: '0', transform: 'scale(0.95)' },
+                '100%': { opacity: '1', transform: 'scale(1)' },
               },
             },
           },
@@ -28,7 +61,7 @@
       };
     </script>
   </head>
-  <body>
+  <body class="bg-bg-base text-zinc-100 antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
