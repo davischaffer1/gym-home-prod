@@ -609,3 +609,139 @@ export function getBestSetBy1RM<
   }
   return best;
 }
+
+/* ============================================================
+   VOLUME POR FIBRA MUSCULAR
+   Base: Henneman 1965, Behm & Sale 1993, Schoenfeld 2016/2020,
+         Grgic 2020, Lasevicius 2018/2022, Refalo 2023
+
+   Como estimamos:
+   - Fibras tipo I (lentas): recrutadas em QUALQUER intensidade
+   - Fibras tipo II (rápidas): recrutadas quando:
+     * RIR <= 3 (perto da falha), OU
+     * Carga >= 75% 1RM estimado
+
+   Uma série pode ativar as duas simultaneamente.
+   ============================================================ */
+
+   export interface FiberActivation {
+    typeI: boolean;
+    typeII: boolean;
+    intensityPct: number;   // % 1RM estimado
+    rir: number;
+  }
+  
+  /**
+   * Classifica a ativação de fibras de uma série.
+   */
+  export function classifyFiberActivation(set: {
+    weight: number;
+    reps: number;
+    rpe?: number;
+    type?: string;
+  }): FiberActivation | null {
+    if (set.type === 'warmup') return null;
+    if (!set.weight || !set.reps) return null;
+  
+    // Estima 1RM (com RIR)
+    const rir = set.rpe !== undefined ? Math.max(0, 10 - set.rpe) : 5;
+    const estimated1RM = estimate1RMWithRIR(set.weight, set.reps, rir);
+    if (estimated1RM <= 0) return null;
+  
+    const intensityPct = (set.weight / estimated1RM) * 100;
+  
+    // Regras
+    // Tipo I: sempre ativada (fibras lentas trabalham em qualquer carga)
+    const typeI = true;
+  
+    // Tipo II: ativada se RIR <= 3 OU carga >= 75% 1RM
+    const typeII = rir <= 3 || intensityPct >= 75;
+  
+    return {
+      typeI,
+      typeII,
+      intensityPct: Math.round(intensityPct * 10) / 10,
+      rir,
+    };
+  }
+  
+  export interface FiberVolumeByGroup {
+    group: string;
+    countTypeI: number;
+    countTypeII: number;
+    totalEffective: number;
+    ratio: number; // typeII / total
+    status: 'pouco-II' | 'equilibrado' | 'muito-II' | 'sem-dados';
+    target: { min: number; max: number };
+  }
+  
+  /**
+   * Conta séries que ativam Tipo I e Tipo II por grupo muscular.
+   */
+  export function countFiberVolumeByGroup(
+    sets: {
+      exerciseId: number;
+      type?: string;
+      rpe?: number;
+      reps?: number;
+      weight?: number;
+      createdAt: number;
+    }[],
+    exercises: { id?: number; name: string; primaryGroup?: string }[],
+    weeks: number = 1
+  ): FiberVolumeByGroup[] {
+    const cutoff = Date.now() - weeks * 7 * 24 * 60 * 60 * 1000;
+  
+    const map = new Map<
+      string,
+      { typeI: number; typeII: number }
+    >();
+  
+    for (const s of sets) {
+      if (s.createdAt < cutoff) continue;
+      const ex = exercises.find((e) => e.id === s.exerciseId);
+      if (!ex) continue;
+  
+      const activation = classifyFiberActivation(s);
+      if (!activation) continue;
+  
+      const group = ex.primaryGroup ?? guessGroupFromName(ex.name);
+      if (!map.has(group)) map.set(group, { typeI: 0, typeII: 0 });
+      const entry = map.get(group)!;
+  
+      if (activation.typeI) entry.typeI++;
+      if (activation.typeII) entry.typeII++;
+    }
+  
+    const ALL_GROUPS = [
+      'Peito',
+      'Costas',
+      'Pernas',
+      'Ombros',
+      'Bíceps',
+      'Tríceps',
+      'Core',
+    ];
+  
+    return ALL_GROUPS.map((group) => {
+      const entry = map.get(group) ?? { typeI: 0, typeII: 0 };
+      const total = entry.typeI;
+      const ratio = total > 0 ? entry.typeII / total : 0;
+  
+      let status: FiberVolumeByGroup['status'] = 'sem-dados';
+      if (total === 0) status = 'sem-dados';
+      else if (ratio < 0.5) status = 'pouco-II';
+      else if (ratio > 0.9) status = 'muito-II';
+      else status = 'equilibrado';
+  
+      return {
+        group,
+        countTypeI: entry.typeI,
+        countTypeII: entry.typeII,
+        totalEffective: total,
+        ratio,
+        status,
+        target: { min: 0.5, max: 0.9 },
+      };
+    });
+  }

@@ -11,6 +11,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { countEffectiveSetsByGroup } from './trainingScience';
+import { countFiberVolumeByGroup } from './trainingScience';
 
 interface Props {
   onBack: () => void;
@@ -111,6 +112,15 @@ export default function DashboardView({ onBack }: Props) {
     }
   }
 
+  // 🧪 Ativação de fibras por grupo
+const fiberVolume = exercises
+? countFiberVolumeByGroup(sets, exercises, 1)
+: [];
+
+const visibleFiber = fiberVolume.filter(
+(g) => g.totalEffective > 0
+);
+
   // 📊 Séries efetivas por grupo (últimas 1 semana)
 const effectiveSets = exercises
 ? countEffectiveSetsByGroup(sets, exercises, 1)
@@ -209,6 +219,28 @@ const visibleGroups = effectiveSets.filter(
 
     <div className="text-[10px] text-zinc-500 pt-2 border-t border-white/5">
       Base: Refalo et al. (2021, 2023), Schoenfeld et al. (2021)
+    </div>
+  </section>
+)}
+
+{/* 🧪 Ativação de fibras */}
+{visibleFiber.length > 0 && (
+  <section className="bg-bg-surface border border-white/5 rounded-3xl p-4 space-y-4">
+    <div className="flex items-center justify-between">
+      <h2 className="font-semibold">🧪 Ativação de fibras</h2>
+      <span className="text-[10px] text-zinc-500">
+        Tipo I / Tipo II
+      </span>
+    </div>
+
+    <div className="space-y-3">
+      {visibleFiber.map((g) => (
+        <FiberBar key={g.group} group={g} />
+      ))}
+    </div>
+
+    <div className="text-[10px] text-zinc-500 pt-2 border-t border-white/5">
+      Base: Henneman (1965), Grgic (2020), Lasevicius (2018, 2022)
     </div>
   </section>
 )}
@@ -461,6 +493,71 @@ function VolumeBar({
           className={`h-full ${barColor} transition-all duration-500 rounded-full`}
           style={{ width: `${pct}%` }}
         />
+      </div>
+    </div>
+  );
+}
+
+function FiberBar({
+  group,
+}: {
+  group: {
+    group: string;
+    countTypeI: number;
+    countTypeII: number;
+    ratio: number;
+    status: 'pouco-II' | 'equilibrado' | 'muito-II' | 'sem-dados';
+  };
+}) {
+  const pctII = Math.round(group.ratio * 100);
+
+  const statusColor = {
+    'pouco-II': 'text-blue-400',
+    equilibrado: 'text-emerald-400',
+    'muito-II': 'text-amber-400',
+    'sem-dados': 'text-zinc-500',
+  }[group.status];
+
+  const statusLabel = {
+    'pouco-II': '↓ pouco estímulo tipo II',
+    equilibrado: '✓ equilibrado',
+    'muito-II': '↑ muito tipo II',
+    'sem-dados': 'sem dados',
+  }[group.status];
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">{group.group}</span>
+          <span className={`text-[10px] ${statusColor}`}>
+            {statusLabel}
+          </span>
+        </div>
+        <span className="text-[10px] text-zinc-500">
+          {group.countTypeII}/{group.countTypeI} séries tipo II
+        </span>
+      </div>
+
+      {/* Barra dupla: base cinza = tipo I, preenchimento colorido = tipo II */}
+      <div className="w-full h-2.5 bg-zinc-800 rounded-full overflow-hidden relative">
+        {/* Fundo tipo I (sempre 100%) */}
+        <div className="absolute inset-0 bg-blue-900/40" />
+        {/* Tipo II preenche de acordo com a proporção */}
+        <div
+          className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${
+            group.status === 'pouco-II'
+              ? 'bg-blue-500'
+              : group.status === 'muito-II'
+              ? 'bg-amber-500'
+              : 'bg-gradient-to-r from-blue-500 to-emerald-500'
+          }`}
+          style={{ width: `${pctII}%` }}
+        />
+      </div>
+
+      <div className="text-[10px] text-zinc-500 mt-1">
+        {pctII}% das séries ativaram fibras tipo II
       </div>
     </div>
   );

@@ -21,6 +21,7 @@ import {
   predict1RM,
   detectLatentPR,
 } from './trainingScience';
+import { classifyFiberActivation } from './trainingScience';
 
 interface Props {
   workoutId: number;
@@ -879,6 +880,31 @@ const latentPR = useLiveQuery(
                       RPE {s.rpe} (RIR {10 - s.rpe})
                     </span>
                   )}
+
+{(() => {
+  const activation = classifyFiberActivation({
+    weight: s.weight,
+    reps: s.reps,
+    rpe: s.rpe,
+    type: s.type,
+  });
+  if (!activation) return null;
+  return activation.typeII ? (
+    <span
+      className="text-[10px] text-purple-400"
+      title={`${activation.intensityPct}% 1RM · RIR ${activation.rir}`}
+    >
+      ⚡II
+    </span>
+  ) : (
+    <span
+      className="text-[10px] text-zinc-500"
+      title={`${activation.intensityPct}% 1RM · RIR ${activation.rir}`}
+    >
+      I
+    </span>
+  );
+})()}
                 </span>
 
                 <span className="flex items-center gap-1.5 flex-shrink-0">
