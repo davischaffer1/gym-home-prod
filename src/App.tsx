@@ -436,6 +436,52 @@ function ExerciseItem({
         />
         <span className="text-zinc-600 text-[10px]">reps</span>
       </div>
+      {/* Configuração de RIR */}
+<div className="flex items-center gap-2 text-xs">
+  <label className="flex items-center gap-1.5 cursor-pointer">
+    <input
+      type="checkbox"
+      checked={ex.useRIR ?? false}
+      onChange={(e) =>
+        db.exercises.update(ex.id!, { useRIR: e.target.checked })
+      }
+      className="w-3.5 h-3.5 accent-emerald-500"
+    />
+    <span className="text-zinc-400">🧠 RIR</span>
+  </label>
+
+  {ex.useRIR && (
+    <>
+      <select
+        className="bg-bg-overlay rounded-lg px-2 py-1 text-xs border border-white/5 outline-none"
+        value={ex.targetRIR ?? 2}
+        onChange={(e) =>
+          db.exercises.update(ex.id!, {
+            targetRIR: parseInt(e.target.value),
+          })
+        }
+      >
+        {[0, 1, 2, 3, 4].map((v) => (
+          <option key={v} value={v}>
+            RIR {v}
+          </option>
+        ))}
+      </select>
+      <span className="text-zinc-600 text-[10px]">
+        {ex.targetRIR === 0
+          ? "Falha"
+          : ex.targetRIR === 1
+          ? "Quase falha"
+          : ex.targetRIR === 2
+          ? "Hipertrofia"
+          : ex.targetRIR === 3
+          ? "Confortável"
+          : "Leve"}
+      </span>
+    </>
+  )}
+</div>
     </div>
+    
   );
 }

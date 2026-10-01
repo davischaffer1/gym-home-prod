@@ -43,6 +43,8 @@ export interface Exercise {
   note?: string; // nota permanente ("ombro esquerdo...")
   primaryGroup?: string; // do exercício da biblioteca
   equipment?: string;
+  targetRIR?: number;      // 👈 NOVO — RIR alvo (ex: 2)
+  useRIR?: boolean;        // 👈 NOVO — toggle por exercício
 }
 
 export interface Session {

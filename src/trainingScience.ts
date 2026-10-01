@@ -150,3 +150,99 @@ export function shouldDeload(
     };
   return { yes: false, reason: '' };
 }
+
+/**
+ * Converte RIR em RPE.
+ */
+export function rirToRPE(rir: number): number {
+  return Math.min(10, 10 - rir);
+}
+
+/**
+ * Sugere ajuste de carga baseado no RIR reportado vs RIR alvo.
+ *
+ * Regra (Helms 2018, Pareja-Blanco 2020):
+ * - Se RIR reportado > RIR alvo → sobra "espaço" → SUGERE SUBIR carga
+ * - Se RIR reportado < RIR alvo → foi muito perto da falha → SUGERE DESCER
+ * - Se RIR reportado == RIR alvo → manter
+ *
+ * Incremento proporcional à diferença:
+ * - Diferença 1 → ajuste leve (~1.25%)
+ * - Diferença 2 → ajuste médio (~2.5%)
+ * - Diferença >= 3 → ajuste forte (~5%)
+ */
+export function suggestLoadByRIR(
+  currentWeight: number,
+  reportedRIR: number,
+  targetRIR: number,
+  exerciseName: string
+): { newWeight: number; direction: "up" | "down" | "keep"; delta: number } {
+  const diff = reportedRIR - targetRIR;
+
+  if (Math.abs(diff) < 1) {
+    return { newWeight: currentWeight, direction: "keep", delta: 0 };
+  }
+
+  // Define step base (menor para isoladores)
+  const lower = exerciseName.toLowerCase();
+  const isLower = LOWER_COMPOUNDS.some((k) => lower.includes(k));
+  const step = isLower ? 5 : 2.5;
+
+  // Ajuste proporcional
+  const pct = Math.min(0.05, Math.abs(diff) * 0.0125);
+  const raw = currentWeight * (1 + (diff > 0 ? pct : -pct));
+  const newWeight = Math.round(raw / step) * step;
+
+  return {
+    newWeight,
+    direction: diff > 0 ? "up" : "down",
+    delta: newWeight - currentWeight,
+  };
+}
+
+/**
+ * Analisa as últimas séries de um exercício e retorna
+ * a sugestão de ajuste para a PRÓXIMA série.
+ */
+export interface RIRSuggestion {
+  direction: "up" | "down" | "keep";
+  currentWeight: number;
+  suggestedWeight: number;
+  delta: number;
+  reason: string;
+  reportedRIR: number;
+  targetRIR: number;
+}
+
+export function analyzeRIRForNextSet(
+  currentSetWeight: number,
+  currentSetRPE: number | undefined,
+  targetRIR: number,
+  exerciseName: string
+): RIRSuggestion | null {
+  if (currentSetRPE === undefined) return null;
+
+  const reportedRIR = rpeToRIR(currentSetRPE);
+  const suggestion = suggestLoadByRIR(
+    currentSetWeight,
+    reportedRIR,
+    targetRIR,
+    exerciseName
+  );
+
+  let reason = "";
+  if (suggestion.direction === "up") {
+    reason = `Você ficou ${reportedRIR - targetRIR} RIR acima do alvo — dá pra subir.`;
+  } else if (suggestion.direction === "down") {
+    reason = `Você ficou ${targetRIR - reportedRIR} RIR abaixo do alvo — considere reduzir.`;
+  } else {
+    reason = "RIR no alvo. Mantenha a carga.";
+  }
+
+  return {
+    ...suggestion,
+    reason,
+    reportedRIR,
+    targetRIR,
+  };
+}

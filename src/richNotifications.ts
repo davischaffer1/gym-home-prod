@@ -173,3 +173,41 @@ export async function requestNotificationPermission(): Promise<boolean> {
       navigator.serviceWorker.removeEventListener('message', listener);
     };
   }
+
+  /**
+ * Notificação "estática" do descanso — lançada IMEDIATAMENTE ao registrar
+ * uma série. Serve para o usuário ver o tempo restante na tela bloqueada
+ * mesmo que o iOS congele o JS do PWA.
+ *
+ * Usa a mesma tag "rest-timer" para que a próxima SUBSTITUA a anterior.
+ */
+export async function showRestStartNotification(
+    seconds: number,
+    exerciseName: string
+  ) {
+    if (!(await requestNotificationPermission())) return;
+  
+    const reg = await getReg();
+    if (!reg) return;
+  
+    const min = Math.floor(seconds / 60);
+    const sec = seconds % 60;
+    const timeStr = `${min.toString().padStart(2, '0')}:${sec
+      .toString()
+      .padStart(2, '0')}`;
+  
+    try {
+      await reg.showNotification('⏱ Descanso em andamento', {
+        body: `${timeStr} · ${exerciseName}`,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: 'rest-timer',
+        renotify: false,
+        requireInteraction: false,
+        silent: true,
+        data: { type: 'rest', seconds },
+      } as NotificationOptions);
+    } catch (err) {
+      console.warn('Erro ao mostrar notificação de descanso:', err);
+    }
+  }

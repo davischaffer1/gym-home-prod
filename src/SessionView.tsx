@@ -8,12 +8,14 @@ import {
   updateActiveSessionNotification,
   clearActiveSessionNotification,
   showPRNotification,
+  showRestStartNotification,
   listenToNotificationActions,
 } from './richNotifications';
 import {
   analyzeExerciseProgress,
   detectPlateau,
   suggestLoadIncrement,
+  analyzeRIRForNextSet,
 } from './trainingScience';
 
 interface Props {
@@ -347,6 +349,7 @@ function ExerciseCard({
   defaultRest: number;
   onSetAdded: (seconds: number) => void;
 }) {
+  // ───── 1. Estados ─────
   const [reps, setReps] = useState('');
   const [weight, setWeight] = useState('');
   const [type, setType] = useState<SetType>('normal');
@@ -367,7 +370,7 @@ function ExerciseCard({
     return () => clearInterval(t);
   }, [tutStart]);
 
-  // Última série antes desta sessão
+  // ───── 2. useLiveQuery em ordem ─────
   const lastSet = useLiveQuery(
     async () => {
       try {
@@ -384,7 +387,6 @@ function ExerciseCard({
     [exercise.id, sessionId]
   );
 
-  // PR anterior (excluindo sessão atual)
   const pr = useLiveQuery(
     async () => {
       try {
@@ -414,7 +416,6 @@ function ExerciseCard({
     [exercise.id, sessionId]
   );
 
-  // Análise (sugestão de carga / platô)
   const analysis = useLiveQuery(
     async () => {
       try {
@@ -454,7 +455,6 @@ function ExerciseCard({
     [exercise.id, sessionId, exercise.targetRepsMin, exercise.targetRepsMax]
   );
 
-  // Séries da sessão atual
   const setsRaw = useLiveQuery(
     () =>
       db.sets
@@ -465,12 +465,50 @@ function ExerciseCard({
     [sessionId, exercise.id]
   );
 
+  // ───── 3. Derivados ─────
   const allSets = (setsRaw ?? []).filter(
     (s) => s && typeof s.weight === 'number' && typeof s.reps === 'number'
   );
 
   const totalTut = allSets.reduce((acc, s) => acc + (s.tutSeconds ?? 0), 0);
 
+  // ───── 4. rirSuggestion (AGORA sim, depois de allSets) ─────
+  const rirSuggestion = useLiveQuery(
+    async () => {
+      if (!exercise.useRIR) return null;
+      if (exercise.targetRIR === undefined) return null;
+
+      const sets = await db.sets
+        .where('sessionId')
+        .equals(sessionId)
+        .and((s) => s && s.exerciseId === exercise.id!)
+        .sortBy('setNumber');
+
+      const filtered = (sets ?? []).filter(
+        (s) => s && typeof s.weight === 'number' && typeof s.reps === 'number'
+      );
+
+      if (filtered.length === 0) return null;
+      const lastSetOfSession = filtered[filtered.length - 1];
+      if (!lastSetOfSession.rpe) return null;
+
+      return analyzeRIRForNextSet(
+        lastSetOfSession.weight,
+        lastSetOfSession.rpe,
+        exercise.targetRIR,
+        exercise.name
+      );
+    },
+    [
+      exercise.useRIR,
+      exercise.targetRIR,
+      exercise.id,
+      sessionId,
+      setsRaw?.length,
+    ]
+  );
+
+  // ───── 5. Funções ─────
   async function addSet(customReps?: number, customWeight?: number) {
     const r = customReps ?? parseInt(reps, 10);
     const w = customWeight ?? parseFloat(weight.replace(',', '.'));
@@ -499,6 +537,22 @@ function ExerciseCard({
       }
       showPRNotification(exercise.name, w);
     }
+
+    // 🧠 Vibração ao acertar RIR alvo
+    if (
+      exercise.useRIR &&
+      exercise.targetRIR !== undefined &&
+      rpe !== undefined &&
+      type !== 'warmup'
+    ) {
+      const reportedRIR = 10 - rpe;
+      if (Math.abs(reportedRIR - exercise.targetRIR) <= 0.5) {
+        if ('vibrate' in navigator) navigator.vibrate?.(50);
+      }
+    }
+
+    // 🔔 Notificação imediata de descanso (aparece na tela bloqueada)
+    await showRestStartNotification(defaultRest, exercise.name);
 
     // Reset
     setReps('');
@@ -537,6 +591,7 @@ function ExerciseCard({
     setTutElapsed(0);
   }
 
+  // ───── 6. Mais derivados ─────
   const done = allSets.length > 0;
   const sessionMax = allSets.length
     ? Math.max(...allSets.map((s) => s.weight))
@@ -547,6 +602,7 @@ function ExerciseCard({
   const targetMin = exercise.targetRepsMin;
   const targetMax = exercise.targetRepsMax;
 
+  // ───── 7. JSX ─────
   return (
     <div
       className={`rounded-3xl p-4 space-y-3 border transition-all ${
@@ -571,6 +627,11 @@ function ExerciseCard({
           {beatPR && (
             <span className="text-[10px] bg-amber-500 text-black px-2 py-0.5 rounded-full font-bold">
               🏆 NOVO PR {newPRValue} kg
+            </span>
+          )}
+          {exercise.useRIR && exercise.targetRIR !== undefined && (
+            <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-medium">
+              🧠 RIR {exercise.targetRIR}
             </span>
           )}
         </h3>
@@ -605,7 +666,53 @@ function ExerciseCard({
         </div>
       )}
 
-      {/* Sugestão de carga */}
+      {/* 🧠 Sugestão por RIR */}
+      {exercise.useRIR &&
+        rirSuggestion &&
+        rirSuggestion.direction !== 'keep' && (
+          <div
+            className={`rounded-2xl px-3 py-2.5 text-xs flex items-center justify-between gap-2 animate-slide-up ${
+              rirSuggestion.direction === 'up'
+                ? 'bg-emerald-950/40 border border-emerald-700/50 text-emerald-300'
+                : 'bg-blue-950/40 border border-blue-700/50 text-blue-300'
+            }`}
+          >
+            <div className="flex-1">
+              <div className="font-semibold mb-0.5">
+                🧠 {rirSuggestion.direction === 'up' ? 'Suba' : 'Reduza'} a
+                carga
+              </div>
+              <div className="text-[11px] opacity-80">
+                {rirSuggestion.reason} Nova:{' '}
+                <strong>{rirSuggestion.suggestedWeight} kg</strong>
+              </div>
+            </div>
+            <button
+              onClick={() =>
+                setWeight(String(rirSuggestion.suggestedWeight))
+              }
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap active:scale-95 transition-all ${
+                rirSuggestion.direction === 'up'
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white'
+              }`}
+            >
+              Usar
+            </button>
+          </div>
+        )}
+
+      {/* 🧠 RIR no alvo */}
+      {exercise.useRIR &&
+        rirSuggestion &&
+        rirSuggestion.direction === 'keep' && (
+          <div className="bg-white/5 border border-white/5 rounded-2xl px-3 py-2 text-[11px] text-zinc-400">
+            🧠 RIR {rirSuggestion.reportedRIR} (alvo{' '}
+            {rirSuggestion.targetRIR}) — mantendo carga
+          </div>
+        )}
+
+      {/* 💡 Sugestão de carga (dupla progressão) */}
       {analysis?.suggestedWeight && (
         <div className="bg-accent/10 border border-accent/30 rounded-2xl px-3 py-2.5 text-xs text-accent-light flex items-center justify-between gap-2 animate-slide-up">
           <span>
@@ -622,7 +729,7 @@ function ExerciseCard({
         </div>
       )}
 
-      {/* Platô detectado */}
+      {/* 📉 Platô detectado */}
       {analysis?.plateau && !analysis.suggestedWeight && (
         <div className="bg-red-950/40 border border-red-800/50 rounded-2xl px-3 py-2 text-xs text-red-300">
           📉 <strong>Platô detectado</strong> — carga não sobe há 3 sessões.
@@ -646,6 +753,11 @@ function ExerciseCard({
               targetMin && targetMax && s.reps < targetMin && t !== 'warmup';
             const aboveRange =
               targetMin && targetMax && s.reps > targetMax && t !== 'warmup';
+            const rirHit =
+              exercise.useRIR &&
+              exercise.targetRIR !== undefined &&
+              s.rpe !== undefined &&
+              Math.abs(10 - s.rpe - exercise.targetRIR) <= 0.5;
 
             return (
               <li
@@ -658,6 +770,7 @@ function ExerciseCard({
               >
                 <span className="flex flex-wrap items-center gap-1.5 min-w-0">
                   {isPRSet && '🏆'}
+                  {rirHit && '🎯'}
                   <span className="font-medium">
                     S{s.setNumber}: {s.reps} × {s.weight} kg
                   </span>
@@ -686,9 +799,9 @@ function ExerciseCard({
                     </span>
                   )}
 
-                  {s.rpe && (
+                  {s.rpe !== undefined && (
                     <span className="text-[10px] text-zinc-500">
-                      RPE {s.rpe}
+                      RPE {s.rpe} (RIR {10 - s.rpe})
                     </span>
                   )}
                 </span>
@@ -813,7 +926,7 @@ function ExerciseCard({
           </button>
         )}
 
-        {/* RPE */}
+        {/* RPE + RIR */}
         <div className="flex items-center gap-1 bg-white/5 border border-white/5 rounded-xl px-2 py-1.5">
           <span className="text-[10px] text-zinc-500">RPE</span>
           <select
@@ -830,6 +943,11 @@ function ExerciseCard({
               </option>
             ))}
           </select>
+          {rpe !== undefined && (
+            <span className="text-[10px] text-zinc-500">
+              · RIR {10 - rpe}
+            </span>
+          )}
         </div>
 
         {/* Nota */}
@@ -964,7 +1082,11 @@ function SessionSummary({
         {/* Cards */}
         <div className="grid grid-cols-2 gap-3">
           <SummaryCard icon="⏱" value={`${durationMin} min`} label="Duração" />
-          <SummaryCard icon="🏋️" value={String(uniqueExercises)} label="Exercícios" />
+          <SummaryCard
+            icon="🏋️"
+            value={String(uniqueExercises)}
+            label="Exercícios"
+          />
           <SummaryCard icon="🔁" value={String(totalSets)} label="Séries" />
           <SummaryCard icon="🔢" value={String(totalReps)} label="Repetições" />
           <SummaryCard
@@ -999,6 +1121,7 @@ function SessionSummary({
                     <span>Série {s.setNumber}</span>
                     <span className="font-medium">
                       {s.reps} × {s.weight} kg
+                      {s.rpe !== undefined && ` · RPE ${s.rpe}`}
                     </span>
                   </li>
                 ))}
@@ -1071,6 +1194,7 @@ function groupByExercise(
     setNumber: number;
     reps: number;
     weight: number;
+    rpe?: number;
     id?: number;
   }[],
   exercises: { id?: number; name: string }[]
