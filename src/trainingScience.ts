@@ -745,3 +745,204 @@ export function getBestSetBy1RM<
       };
     });
   }
+
+  /* ============================================================
+   PREVISÃO DE TEMPO ATÉ PRÓXIMA PR
+   Base: Stone 1981, Rhea 2002/2003, Helms 2018, Vigotsky 2018
+
+   Método:
+   1. Coleta 1RM estimado por sessão (últimos 90 dias)
+   2. Regressão linear simples (mínimos quadrados)
+   3. Taxa em kg/semana
+   4. Aplica decaimento conforme nível de força
+   5. Projeta semanas até atingir o alvo
+   ============================================================ */
+
+export interface ProgressRate {
+  slopePerWeek: number;       // kg/semana (positivo = progresso)
+  dataPoints: number;
+  firstEstimate: number;
+  lastEstimate: number;
+  confidenceLevel: 'baixa' | 'média' | 'alta';
+}
+
+export interface PRForecast {
+  target: number;
+  currentBest: number;
+  gap: number;
+  weeksToTarget: number | null;  // null = não dá pra prever
+  estimatedDate: number | null;  // timestamp
+  rate: ProgressRate;
+  note: string;
+}
+
+/**
+ * Calcula a taxa de progressão (regressão linear simples).
+ */
+export function computeProgressRate(
+  points: { timestamp: number; oneRM: number }[]
+): ProgressRate | null {
+  if (points.length < 3) return null;
+
+  // Ordena por timestamp
+  const sorted = [...points].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Converte timestamp para "semanas desde o primeiro ponto"
+  const t0 = sorted[0].timestamp;
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+
+  const xs = sorted.map((p) => (p.timestamp - t0) / weekMs);
+  const ys = sorted.map((p) => p.oneRM);
+
+  const n = xs.length;
+  const sumX = xs.reduce((a, b) => a + b, 0);
+  const sumY = ys.reduce((a, b) => a + b, 0);
+  const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
+  const sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
+
+  const denom = n * sumX2 - sumX * sumX;
+  if (denom === 0) return null;
+
+  const slope = (n * sumXY - sumX * sumY) / denom; // kg/semana
+  const firstEstimate = ys[0];
+  const lastEstimate = ys[ys.length - 1];
+
+  // Confiança baseada na quantidade de pontos e consistência
+  let confidenceLevel: 'baixa' | 'média' | 'alta' = 'baixa';
+  if (n >= 8 && slope > 0) confidenceLevel = 'alta';
+  else if (n >= 5 && slope > 0) confidenceLevel = 'média';
+
+  return {
+    slopePerWeek: Math.round(slope * 100) / 100,
+    dataPoints: n,
+    firstEstimate: Math.round(firstEstimate * 10) / 10,
+    lastEstimate: Math.round(lastEstimate * 10) / 10,
+    confidenceLevel,
+  };
+}
+
+/**
+ * Aplica decaimento conforme nível de força.
+ * Base: Rhea et al. (2002, 2003), Helms (2018).
+ *
+ * Quanto mais forte você fica, mais devagar progride.
+ */
+function decayFactor(estimated1RM: number): number {
+  if (estimated1RM < 60) return 1.0;
+  if (estimated1RM < 100) return 0.85;
+  if (estimated1RM < 140) return 0.7;
+  if (estimated1RM < 180) return 0.55;
+  return 0.4;
+}
+
+/**
+ * Calcula previsão até um alvo específico.
+ */
+export function forecastPR(
+  points: { timestamp: number; oneRM: number }[],
+  target: number
+): PRForecast | null {
+  const rate = computeProgressRate(points);
+  if (!rate) return null;
+
+  const currentBest = rate.lastEstimate;
+  const gap = target - currentBest;
+
+  if (gap <= 0) {
+    return {
+      target,
+      currentBest,
+      gap: 0,
+      weeksToTarget: 0,
+      estimatedDate: Date.now(),
+      rate,
+      note: '🎉 Alvo já atingido!',
+    };
+  }
+
+  if (rate.slopePerWeek <= 0) {
+    return {
+      target,
+      currentBest,
+      gap,
+      weeksToTarget: null,
+      estimatedDate: null,
+      rate,
+      note: '📉 Progresso estagnado. Considere deload ou mudança de variação.',
+    };
+  }
+
+  const decay = decayFactor(currentBest);
+  const effectiveSlope = rate.slopePerWeek * decay;
+  const weeksToTarget = Math.ceil(gap / effectiveSlope);
+
+  // Se a previsão for muito distante (> 52 semanas), avisa
+  let note = '';
+  if (weeksToTarget > 52) {
+    note = '⏳ Previsão distante — a taxa de progresso tende a mudar.';
+  } else if (weeksToTarget <= 2) {
+    note = '⚡ Você está muito perto!';
+  } else if (weeksToTarget <= 8) {
+    note = '🚀 Progresso consistente. Continue!';
+  } else {
+    note = '💪 Foco na consistência.';
+  }
+
+  const estimatedDate = Date.now() + weeksToTarget * 7 * 24 * 60 * 60 * 1000;
+
+  return {
+    target,
+    currentBest,
+    gap: Math.round(gap * 10) / 10,
+    weeksToTarget,
+    estimatedDate,
+    rate: {
+      ...rate,
+      slopePerWeek: Math.round(effectiveSlope * 100) / 100, // já com decay
+    },
+    note,
+  };
+}
+
+/**
+ * Extrai os pontos de 1RM estimado por sessão.
+ */
+export function extract1RMTimeline(
+  sets: {
+    sessionId: number;
+    weight: number;
+    reps: number;
+    rpe?: number;
+    type?: string;
+    createdAt: number;
+  }[],
+  sessions: { id?: number; startedAt: number }[]
+): { timestamp: number; oneRM: number }[] {
+  const bySession = new Map<number, typeof sets>();
+  for (const s of sets) {
+    if (s.type === 'warmup') continue;
+    if (!bySession.has(s.sessionId)) bySession.set(s.sessionId, []);
+    bySession.get(s.sessionId)!.push(s);
+  }
+
+  const points: { timestamp: number; oneRM: number }[] = [];
+  for (const [sessionId, list] of bySession) {
+    const session = sessions.find((s) => s.id === sessionId);
+    if (!session) continue;
+
+    let bestOneRM = 0;
+    for (const s of list) {
+      const rir = s.rpe !== undefined ? Math.max(0, 10 - s.rpe) : 0;
+      const est = estimate1RMWithRIR(s.weight, s.reps, rir);
+      if (est > bestOneRM) bestOneRM = est;
+    }
+    if (bestOneRM > 0) {
+      points.push({
+        timestamp: session.startedAt,
+        oneRM: bestOneRM,
+      });
+    }
+  }
+
+  return points.sort((a, b) => a.timestamp - b.timestamp);
+}

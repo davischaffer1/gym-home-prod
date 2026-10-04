@@ -16,12 +16,10 @@ import {
   detectPlateau,
   suggestLoadIncrement,
   analyzeRIRForNextSet,
-} from './trainingScience';
-import {
   predict1RM,
   detectLatentPR,
+  classifyFiberActivation,
 } from './trainingScience';
-import { classifyFiberActivation } from './trainingScience';
 
 interface Props {
   workoutId: number;
@@ -354,7 +352,7 @@ function ExerciseCard({
   defaultRest: number;
   onSetAdded: (seconds: number) => void;
 }) {
-  // ───── 1. Estados ─────
+  // ───── Estados principais ─────
   const [reps, setReps] = useState('');
   const [weight, setWeight] = useState('');
   const [type, setType] = useState<SetType>('normal');
@@ -367,6 +365,12 @@ function ExerciseCard({
   const [tutStart, setTutStart] = useState<number | null>(null);
   const [tutElapsed, setTutElapsed] = useState(0);
 
+  // ✎ Edição de série
+  const [editingSetId, setEditingSetId] = useState<number | null>(null);
+  const [editReps, setEditReps] = useState('');
+  const [editWeight, setEditWeight] = useState('');
+  const [editRpe, setEditRpe] = useState<number | undefined>(undefined);
+
   useEffect(() => {
     if (tutStart === null) return;
     const t = setInterval(() => {
@@ -375,7 +379,7 @@ function ExerciseCard({
     return () => clearInterval(t);
   }, [tutStart]);
 
-  // ───── 2. useLiveQuery em ordem ─────
+  // ───── useLiveQuery em ordem ─────
   const lastSet = useLiveQuery(
     async () => {
       try {
@@ -470,50 +474,50 @@ function ExerciseCard({
     [sessionId, exercise.id]
   );
 
-  // ───── 3. Derivados ─────
+  // ───── Derivados ─────
   const allSets = (setsRaw ?? []).filter(
     (s) => s && typeof s.weight === 'number' && typeof s.reps === 'number'
   );
 
   const totalTut = allSets.reduce((acc, s) => acc + (s.tutSeconds ?? 0), 0);
 
-  // 📊 1RM em tempo real (melhor série da sessão atual)
-const best1RM = useLiveQuery(
-  async () => {
-    if (allSets.length === 0) return null;
-    let best: { set: any; estimate: number } | null = null;
+  // 📊 1RM em tempo real
+  const best1RM = useLiveQuery(
+    async () => {
+      if (allSets.length === 0) return null;
+      let best: { set: any; estimate: number } | null = null;
 
-    for (const s of allSets) {
-      const pred = predict1RM(s);
-      if (!pred) continue;
-      if (!best || pred.estimated1RMWithRIR > best.estimate) {
-        best = { set: s, estimate: pred.estimated1RMWithRIR };
+      for (const s of allSets) {
+        const pred = predict1RM(s);
+        if (!pred) continue;
+        if (!best || pred.estimated1RMWithRIR > best.estimate) {
+          best = { set: s, estimate: pred.estimated1RMWithRIR };
+        }
       }
-    }
 
-    return best;
-  },
-  [allSets.length, exercise.id]
-);
+      return best;
+    },
+    [allSets.length, exercise.id]
+  );
 
-// 📊 PR latente
-const latentPR = useLiveQuery(
-  async () => {
-    const historical = await db.sets
-      .where('exerciseId')
-      .equals(exercise.id!)
-      .toArray();
+  // 🔮 PR latente
+  const latentPR = useLiveQuery(
+    async () => {
+      const historical = await db.sets
+        .where('exerciseId')
+        .equals(exercise.id!)
+        .toArray();
 
-    const previousSessions = historical.filter(
-      (s) => s.sessionId !== sessionId
-    );
+      const previousSessions = historical.filter(
+        (s) => s.sessionId !== sessionId
+      );
 
-    return detectLatentPR(previousSessions, allSets);
-  },
-  [exercise.id, sessionId, allSets.length]
-);
+      return detectLatentPR(previousSessions, allSets);
+    },
+    [exercise.id, sessionId, allSets.length]
+  );
 
-  // ───── 4. rirSuggestion (AGORA sim, depois de allSets) ─────
+  // 🧠 Sugestão por RIR
   const rirSuggestion = useLiveQuery(
     async () => {
       if (!exercise.useRIR) return null;
@@ -549,7 +553,7 @@ const latentPR = useLiveQuery(
     ]
   );
 
-  // ───── 5. Funções ─────
+  // ───── Funções ─────
   async function addSet(customReps?: number, customWeight?: number) {
     const r = customReps ?? parseInt(reps, 10);
     const w = customWeight ?? parseFloat(weight.replace(',', '.'));
@@ -571,7 +575,7 @@ const latentPR = useLiveQuery(
       rpe,
     });
 
-    // 🏆 Notificação de PR + vibração
+    // 🏆 Notificação de PR
     if (type !== 'warmup' && pr && w > pr.weight) {
       if ('vibrate' in navigator) {
         navigator.vibrate?.([100, 50, 100, 50, 200]);
@@ -592,10 +596,9 @@ const latentPR = useLiveQuery(
       }
     }
 
-    // 🔔 Notificação imediata de descanso (aparece na tela bloqueada)
+    // 🔔 Notificação de descanso
     await showRestStartNotification(defaultRest, exercise.name);
 
-    // Reset
     setReps('');
     setWeight('');
     setNote('');
@@ -615,6 +618,7 @@ const latentPR = useLiveQuery(
 
   async function removeSet(id: number) {
     if (id == null) return;
+    if (!confirm('Remover essa série?')) return;
     await db.sets.delete(id);
   }
 
@@ -632,7 +636,45 @@ const latentPR = useLiveQuery(
     setTutElapsed(0);
   }
 
-  // ───── 6. Mais derivados ─────
+  // ✎ Edição de série
+  function startEditSet(s: {
+    id?: number;
+    reps: number;
+    weight: number;
+    rpe?: number;
+  }) {
+    setEditingSetId(s.id!);
+    setEditReps(String(s.reps));
+    setEditWeight(String(s.weight));
+    setEditRpe(s.rpe);
+  }
+
+  async function saveEditSet() {
+    if (editingSetId === null) return;
+    const r = parseInt(editReps, 10);
+    const w = parseFloat(editWeight.replace(',', '.'));
+    if (!r || isNaN(r) || isNaN(w)) return;
+
+    await db.sets.update(editingSetId, {
+      reps: r,
+      weight: w,
+      rpe: editRpe,
+    });
+
+    setEditingSetId(null);
+    setEditReps('');
+    setEditWeight('');
+    setEditRpe(undefined);
+  }
+
+  function cancelEdit() {
+    setEditingSetId(null);
+    setEditReps('');
+    setEditWeight('');
+    setEditRpe(undefined);
+  }
+
+  // ───── Mais derivados ─────
   const done = allSets.length > 0;
   const sessionMax = allSets.length
     ? Math.max(...allSets.map((s) => s.weight))
@@ -643,7 +685,7 @@ const latentPR = useLiveQuery(
   const targetMin = exercise.targetRepsMin;
   const targetMax = exercise.targetRepsMax;
 
-  // ───── 7. JSX ─────
+  // ───── JSX ─────
   return (
     <div
       className={`rounded-3xl p-4 space-y-3 border transition-all ${
@@ -670,41 +712,6 @@ const latentPR = useLiveQuery(
               🏆 NOVO PR {newPRValue} kg
             </span>
           )}
-          {/* 📊 1RM em tempo real + PR latente */}
-{best1RM && (
-  <div className="bg-white/5 border border-white/5 rounded-2xl px-3 py-2 text-[11px] text-zinc-400 flex items-center justify-between gap-2">
-    <span>
-      📊 1RM estimado:{' '}
-      <strong className="text-accent-light">
-        {Math.round(best1RM.estimate * 10) / 10} kg
-      </strong>
-      <span className="text-zinc-600">
-        {' '}
-        (de {best1RM.set.reps}×{best1RM.set.weight} kg
-        {best1RM.set.rpe !== undefined &&
-          ` @ RIR ${Math.max(0, 10 - best1RM.set.rpe)}`}
-        )
-      </span>
-    </span>
-  </div>
-)}
-
-{latentPR && (
-  <div className="bg-purple-950/40 border border-purple-700/50 rounded-2xl px-3 py-2.5 text-xs text-purple-200 animate-slide-up">
-    <div className="font-semibold mb-1">
-      🔮 Você tem margem para mais
-    </div>
-    <div className="text-[11px] opacity-90 leading-relaxed">
-      Seu PR registrado é <strong>{latentPR.actualPR} kg</strong>. Mas sua série de{' '}
-      {latentPR.sourceSet.reps}×{latentPR.sourceSet.weight} kg (RIR {latentPR.sourceSet.rir})
-      indica um <strong>1RM teórico de {latentPR.estimated1RM} kg</strong>.
-      <br />
-      <span className="text-purple-300">
-        👉 Tente uma carga nova: <strong>{latentPR.nextPRTarget} kg</strong> na próxima sessão.
-      </span>
-    </div>
-  </div>
-)}
           {exercise.useRIR && exercise.targetRIR !== undefined && (
             <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-medium">
               🧠 RIR {exercise.targetRIR}
@@ -734,6 +741,50 @@ const latentPR = useLiveQuery(
           )}
         </div>
       </div>
+
+      {/* 📊 1RM em tempo real */}
+      {best1RM && (
+        <div className="bg-white/5 border border-white/5 rounded-2xl px-3 py-2 text-[11px] text-zinc-400 flex items-center justify-between gap-2">
+          <span>
+            📊 1RM estimado:{' '}
+            <strong className="text-accent-light">
+              {Math.round(best1RM.estimate * 10) / 10} kg
+            </strong>
+            <span className="text-zinc-600">
+              {' '}
+              (de {best1RM.set.reps}×{best1RM.set.weight} kg
+              {best1RM.set.rpe !== undefined &&
+                ` @ RIR ${Math.max(0, 10 - best1RM.set.rpe)}`}
+              )
+            </span>
+          </span>
+        </div>
+      )}
+
+      {/* 🔮 PR latente */}
+      {latentPR && (
+        <div className="bg-purple-950/40 border border-purple-700/50 rounded-2xl px-3 py-2.5 text-xs text-purple-200 animate-slide-up">
+          <div className="font-semibold mb-1">
+            🔮 Você tem margem para mais
+          </div>
+          <div className="text-[11px] opacity-90 leading-relaxed">
+            Seu PR registrado é{' '}
+            <strong>{latentPR.actualPR} kg</strong>. Mas sua série de{' '}
+            {latentPR.sourceSet.reps}×{latentPR.sourceSet.weight} kg (RIR{' '}
+            {latentPR.sourceSet.rir}) indica um{' '}
+            <strong>
+              1RM teórico de {latentPR.estimated1RM} kg
+            </strong>
+            .
+            <br />
+            <span className="text-purple-300">
+              👉 Tente uma carga nova:{' '}
+              <strong>{latentPR.nextPRTarget ?? latentPR.actualPR + 5} kg</strong>{' '}
+              na próxima sessão.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Nota permanente do exercício */}
       {exercise.note && (
@@ -788,7 +839,7 @@ const latentPR = useLiveQuery(
           </div>
         )}
 
-      {/* 💡 Sugestão de carga (dupla progressão) */}
+      {/* 💡 Sugestão de carga */}
       {analysis?.suggestedWeight && (
         <div className="bg-accent/10 border border-accent/30 rounded-2xl px-3 py-2.5 text-xs text-accent-light flex items-center justify-between gap-2 animate-slide-up">
           <span>
@@ -805,7 +856,7 @@ const latentPR = useLiveQuery(
         </div>
       )}
 
-      {/* 📉 Platô detectado */}
+      {/* 📉 Platô */}
       {analysis?.plateau && !analysis.suggestedWeight && (
         <div className="bg-red-950/40 border border-red-800/50 rounded-2xl px-3 py-2 text-xs text-red-300">
           📉 <strong>Platô detectado</strong> — carga não sobe há 3 sessões.
@@ -817,6 +868,72 @@ const latentPR = useLiveQuery(
       {allSets.length > 0 && (
         <ul className="space-y-1.5">
           {allSets.map((s) => {
+            const isEditing = editingSetId === s.id;
+
+            // ─── MODO EDIÇÃO ───
+            if (isEditing) {
+              return (
+                <li
+                  key={s.id}
+                  className="bg-accent/10 border border-accent/30 rounded-2xl p-2.5 space-y-2"
+                >
+                  <div className="text-[10px] text-zinc-400">
+                    Editando série {s.setNumber}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input
+                      autoFocus
+                      className="flex-1 bg-bg-overlay border border-white/5 rounded-xl px-2 py-1.5 text-xs text-center outline-none focus:border-accent/50"
+                      inputMode="numeric"
+                      placeholder="reps"
+                      value={editReps}
+                      onChange={(e) => setEditReps(e.target.value)}
+                    />
+                    <input
+                      className="flex-1 bg-bg-overlay border border-white/5 rounded-xl px-2 py-1.5 text-xs text-center outline-none focus:border-accent/50"
+                      inputMode="decimal"
+                      placeholder="kg"
+                      value={editWeight}
+                      onChange={(e) => setEditWeight(e.target.value)}
+                    />
+                    <select
+                      className="bg-bg-overlay border border-white/5 rounded-xl px-2 py-1.5 text-xs outline-none focus:border-accent/50"
+                      value={editRpe ?? ''}
+                      onChange={(e) =>
+                        setEditRpe(
+                          e.target.value
+                            ? parseInt(e.target.value)
+                            : undefined
+                        )
+                      }
+                    >
+                      <option value="">RPE –</option>
+                      {[6, 7, 8, 9, 10].map((v) => (
+                        <option key={v} value={v}>
+                          RPE {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={saveEditSet}
+                      className="flex-1 bg-accent hover:bg-accent-light py-1.5 rounded-xl text-xs font-medium active:scale-95 transition-all"
+                    >
+                      ✓ Salvar
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="flex-1 bg-white/5 hover:bg-white/10 py-1.5 rounded-xl text-xs active:scale-95 transition-all"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </li>
+              );
+            }
+
+            // ─── MODO NORMAL ───
             const isPRSet =
               !!pr && s.weight > pr.weight && s.type !== 'warmup';
             const t = s.type ?? 'normal';
@@ -834,6 +951,13 @@ const latentPR = useLiveQuery(
               exercise.targetRIR !== undefined &&
               s.rpe !== undefined &&
               Math.abs(10 - s.rpe - exercise.targetRIR) <= 0.5;
+
+            const fiber = classifyFiberActivation({
+              weight: s.weight,
+              reps: s.reps,
+              rpe: s.rpe,
+              type: s.type,
+            });
 
             return (
               <li
@@ -877,37 +1001,21 @@ const latentPR = useLiveQuery(
 
                   {s.rpe !== undefined && (
                     <span className="text-[10px] text-zinc-500">
-                      RPE {s.rpe} (RIR {10 - s.rpe})
+                      RPE {s.rpe}
                     </span>
                   )}
 
-{(() => {
-  const activation = classifyFiberActivation({
-    weight: s.weight,
-    reps: s.reps,
-    rpe: s.rpe,
-    type: s.type,
-  });
-  if (!activation) return null;
-  return activation.typeII ? (
-    <span
-      className="text-[10px] text-purple-400"
-      title={`${activation.intensityPct}% 1RM · RIR ${activation.rir}`}
-    >
-      ⚡II
-    </span>
-  ) : (
-    <span
-      className="text-[10px] text-zinc-500"
-      title={`${activation.intensityPct}% 1RM · RIR ${activation.rir}`}
-    >
-      I
-    </span>
-  );
-})()}
+                  {fiber && (
+                    <span
+                      className="text-[10px]"
+                      title={`${fiber.intensityPct}% 1RM · RIR ${fiber.rir}`}
+                    >
+                      {fiber.typeII ? '⚡II' : 'I'}
+                    </span>
+                  )}
                 </span>
 
-                <span className="flex items-center gap-1.5 flex-shrink-0">
+                <span className="flex items-center gap-1 flex-shrink-0">
                   {s.note && (
                     <span
                       className="text-[10px] text-zinc-500 italic truncate max-w-[80px]"
@@ -917,8 +1025,16 @@ const latentPR = useLiveQuery(
                     </span>
                   )}
                   <button
+                    onClick={() => startEditSet(s)}
+                    className="text-blue-400 hover:text-blue-300 text-xs w-6 h-6 flex items-center justify-center rounded-full hover:bg-blue-500/10 active:scale-90 transition-all"
+                    title="Editar"
+                  >
+                    ✎
+                  </button>
+                  <button
                     onClick={() => removeSet(s.id!)}
                     className="text-red-400 hover:text-red-300 text-xs w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-500/10 active:scale-90 transition-all"
+                    title="Remover"
                   >
                     ×
                   </button>
@@ -964,9 +1080,8 @@ const latentPR = useLiveQuery(
         </button>
       </div>
 
-      {/* Barra de extras: tipo, TUT, RPE, nota */}
+      {/* Barra de extras */}
       <div className="flex gap-1.5 items-center flex-wrap">
-        {/* Tipo */}
         <div className="relative">
           <button
             onClick={() => setShowTypeMenu((v) => !v)}
@@ -1006,7 +1121,6 @@ const latentPR = useLiveQuery(
           )}
         </div>
 
-        {/* TUT */}
         <button
           onClick={toggleTut}
           className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-medium transition-all active:scale-95 ${
@@ -1027,7 +1141,6 @@ const latentPR = useLiveQuery(
           </button>
         )}
 
-        {/* RPE + RIR */}
         <div className="flex items-center gap-1 bg-white/5 border border-white/5 rounded-xl px-2 py-1.5">
           <span className="text-[10px] text-zinc-500">RPE</span>
           <select
@@ -1051,7 +1164,6 @@ const latentPR = useLiveQuery(
           )}
         </div>
 
-        {/* Nota */}
         <button
           onClick={() => setShowNote((v) => !v)}
           className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-medium transition-all active:scale-95 ${
@@ -1064,7 +1176,6 @@ const latentPR = useLiveQuery(
         </button>
       </div>
 
-      {/* Campo de nota */}
       {showNote && (
         <input
           className="w-full bg-bg-elevated border border-white/5 rounded-2xl px-3 py-2.5 outline-none text-sm focus:border-accent/50 transition-all animate-slide-up"
@@ -1169,7 +1280,6 @@ function SessionSummary({
   return (
     <div className="min-h-screen safe-top safe-bottom safe-x">
       <div className="max-w-lg mx-auto px-4 pt-6 pb-12 space-y-5 animate-slide-up">
-        {/* Hero */}
         <div className="text-center space-y-2">
           <div className="text-6xl mb-2">🏆</div>
           <h1 className="text-3xl font-bold tracking-tight">
@@ -1180,7 +1290,6 @@ function SessionSummary({
           </p>
         </div>
 
-        {/* Cards */}
         <div className="grid grid-cols-2 gap-3">
           <SummaryCard icon="⏱" value={`${durationMin} min`} label="Duração" />
           <SummaryCard
@@ -1203,7 +1312,6 @@ function SessionSummary({
           />
         </div>
 
-        {/* Detalhes */}
         <div className="space-y-3">
           <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-1">
             Detalhes
@@ -1231,7 +1339,6 @@ function SessionSummary({
           ))}
         </div>
 
-        {/* Notas */}
         {session.notes && (
           <div className="bg-bg-surface border border-white/5 rounded-3xl p-4">
             <div className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-2">
@@ -1241,7 +1348,6 @@ function SessionSummary({
           </div>
         )}
 
-        {/* Ações */}
         <div className="flex gap-2 pt-2">
           <button
             onClick={onRepeat}

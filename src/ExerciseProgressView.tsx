@@ -12,6 +12,10 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from 'recharts';
+import {
+  extract1RMTimeline,
+  forecastPR,
+} from './trainingScience';
 
 interface Props {
   onBack: () => void;
@@ -154,6 +158,42 @@ function ExerciseChart({ exerciseName }: { exerciseName: string }) {
     };
   }, [exerciseName]);
 
+  // 🔮 Previsão até próxima PR
+const forecast = useLiveQuery(
+  async () => {
+    const exercises = await db.exercises
+      .where('name')
+      .equals(exerciseName)
+      .toArray();
+    if (exercises.length === 0) return null;
+
+    const exerciseIds = exercises.map((e) => e.id!);
+    const allSets = await db.sets.toArray();
+    const filtered = allSets.filter((s) => exerciseIds.includes(s.exerciseId));
+    const sessions = await db.sessions.toArray();
+
+    const timeline = extract1RMTimeline(filtered, sessions);
+    if (timeline.length < 3) return null;
+
+    const currentBest = timeline[timeline.length - 1].oneRM;
+
+    // Alvo 1: próximo passo de 5 kg
+    const step = currentBest < 100 ? 5 : 10;
+    const nextTarget = Math.ceil((currentBest + 0.1) / step) * step;
+
+    // Alvo 2: 25% acima
+    const stretchTarget = Math.ceil((currentBest * 1.25) / step) * step;
+
+    return {
+      next: forecastPR(timeline, nextTarget),
+      stretch: forecastPR(timeline, stretchTarget),
+      timeline,
+      currentBest,
+    };
+  },
+  [exerciseName]
+);
+
   if (!data) {
     return <p className="p-4 text-zinc-400">Carregando gráfico...</p>;
   }
@@ -210,6 +250,64 @@ function ExerciseChart({ exerciseName }: { exerciseName: string }) {
         </div>
       </div>
 
+      {/* 🔮 Previsão de PR */}
+{forecast?.next && (
+  <section className="bg-purple-950/30 border border-purple-800/50 rounded-3xl p-4 space-y-3">
+    <div className="flex items-center justify-between">
+      <h3 className="text-sm font-semibold text-purple-200">
+        🔮 Previsão de PR
+      </h3>
+      <span className="text-[10px] text-purple-400">
+        Confiança: {forecast.next.rate.confidenceLevel}
+      </span>
+    </div>
+
+    {/* Alvo próximo */}
+    <ForecastItem
+      label="Próximo passo"
+      target={forecast.next.target}
+      forecast={forecast.next}
+      accent="emerald"
+    />
+
+    {/* Alvo esticado */}
+    {forecast.stretch && forecast.stretch.weeksToTarget !== null && (
+      <ForecastItem
+        label="Meta esticada"
+        target={forecast.stretch.target}
+        forecast={forecast.stretch}
+        accent="purple"
+      />
+    )}
+
+    {/* Taxa atual */}
+    <div className="bg-white/5 rounded-2xl px-3 py-2 text-[11px]">
+      <div className="flex justify-between">
+        <span className="text-zinc-400">Taxa de progresso</span>
+        <span
+          className={`font-semibold ${
+            forecast.next.rate.slopePerWeek > 0
+              ? 'text-emerald-400'
+              : 'text-red-400'
+          }`}
+        >
+          {forecast.next.rate.slopePerWeek > 0 ? '+' : ''}
+          {forecast.next.rate.slopePerWeek} kg/semana
+        </span>
+      </div>
+      <div className="flex justify-between mt-1">
+        <span className="text-zinc-500 text-[10px]">
+          Baseado em {forecast.next.rate.dataPoints} sessões
+        </span>
+      </div>
+    </div>
+
+    <div className="text-[10px] text-zinc-500 pt-2 border-t border-white/5">
+      Base: Stone (1981), Rhea (2002), Helms (2018)
+    </div>
+  </section>
+)}
+
       {/* Gráfico */}
       <div className="bg-zinc-900 rounded-2xl p-4">
         <h3 className="font-semibold mb-3 text-sm text-zinc-300">
@@ -262,6 +360,77 @@ function ExerciseChart({ exerciseName }: { exerciseName: string }) {
           🎯 Faixa alvo: {data.targetMin}–{data.targetMax} reps
         </p>
       )}
+    </div>
+  );
+}
+
+function ForecastItem({
+  label,
+  target,
+  forecast,
+  accent,
+}: {
+  label: string;
+  target: number;
+  forecast: {
+    weeksToTarget: number | null;
+    estimatedDate: number | null;
+    gap: number;
+    note: string;
+  };
+  accent: 'emerald' | 'purple';
+}) {
+  const accentColor =
+    accent === 'emerald' ? 'text-emerald-400' : 'text-purple-400';
+
+  function formatDate(ts: number) {
+    return new Date(ts).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  return (
+    <div className="bg-white/5 rounded-2xl px-3 py-2.5 space-y-1">
+      <div className="flex justify-between items-center">
+        <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
+          {label}
+        </span>
+        <span className={`text-sm font-bold ${accentColor}`}>
+          {target} kg
+        </span>
+      </div>
+
+      {forecast.weeksToTarget !== null ? (
+        <>
+          <div className="flex justify-between text-[11px]">
+            <span className="text-zinc-400">
+              Faltam <strong className="text-white">{forecast.gap} kg</strong>
+            </span>
+            <span className="text-zinc-400">
+              ~
+              <strong className="text-white">
+                {forecast.weeksToTarget} semana
+                {forecast.weeksToTarget > 1 ? 's' : ''}
+              </strong>
+            </span>
+          </div>
+          {forecast.estimatedDate && (
+            <div className="text-[10px] text-zinc-500">
+              📅 Por volta de {formatDate(forecast.estimatedDate)}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-[11px] text-zinc-400">
+          Sem previsão confiável ainda
+        </div>
+      )}
+
+      <div className="text-[10px] text-zinc-500 italic pt-1">
+        {forecast.note}
+      </div>
     </div>
   );
 }

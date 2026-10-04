@@ -23,6 +23,12 @@ export default function HistoryView({ onBack }: Props) {
     return workouts?.find((w) => w.id === id)?.name ?? 'Treino removido';
   }
 
+  async function deleteSession(sessionId: number) {
+    if (!confirm('Apagar essa sessão? As séries também serão apagadas.')) return;
+    await db.sets.where('sessionId').equals(sessionId).delete();
+    await db.sessions.delete(sessionId);
+  }
+
   function formatDate(ts: number) {
     return new Date(ts).toLocaleString('pt-BR', {
       day: '2-digit',
@@ -58,20 +64,28 @@ export default function HistoryView({ onBack }: Props) {
 
       <ul className="space-y-2">
         {sessions.map((s) => (
-          <li key={s.id} className="bg-zinc-900 rounded-2xl overflow-hidden">
+          <li key={s.id} className="bg-bg-surface border border-white/5 rounded-3xl overflow-hidden">
+          <div className="flex">
             <button
               onClick={() => setOpenId(openId === s.id ? null : s.id!)}
-              className="w-full text-left px-4 py-3 hover:bg-zinc-800 transition"
+              className="flex-1 text-left px-4 py-3 hover:bg-white/5 transition"
             >
               <div className="font-semibold">{workoutName(s.workoutId)}</div>
               <div className="text-sm text-zinc-400">
-                {formatDate(s.startedAt)} ·{' '}
-                {duration(s.startedAt, s.finishedAt!, s.totalPausedMs)}
+                {formatDate(s.startedAt)} · {duration(s.startedAt, s.finishedAt!, s.totalPausedMs)}
               </div>
             </button>
-
-            {openId === s.id && <SessionDetails sessionId={s.id!} />}
-          </li>
+            <button
+              onClick={() => deleteSession(s.id!)}
+              className="px-4 text-red-400 hover:text-red-300 hover:bg-red-500/10 active:scale-90 transition-all"
+              title="Apagar sessão"
+            >
+              🗑
+            </button>
+          </div>
+        
+          {openId === s.id && <SessionDetails sessionId={s.id!} />}
+        </li>
         ))}
       </ul>
     </div>
