@@ -88,11 +88,11 @@ export default function RestTimer({ seconds, onClose }: Props) {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 max-w-md mx-auto z-50">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-4 shadow-2xl space-y-3">
+      <div className="bg-bg-1 border border-zinc-700 rounded-2xl p-4 shadow-2xl space-y-3">
         {/* Barra de progresso */}
-        <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="w-full h-1.5 bg-bg-2 rounded-full overflow-hidden">
           <div
-            className="h-full bg-emerald-500 transition-all duration-1000 ease-linear"
+            className="h-full bg-accent-hover transition-all duration-1000 ease-linear"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -104,7 +104,7 @@ export default function RestTimer({ seconds, onClose }: Props) {
               <div className="text-xl font-bold tabular-nums">
                 {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
               </div>
-              <div className="text-xs text-zinc-400">
+              <div className="text-xs text-text-2">
                 {remaining === 0 ? '✅ Descanso concluído' : 'Descanso'}
               </div>
             </div>
@@ -113,13 +113,13 @@ export default function RestTimer({ seconds, onClose }: Props) {
           <div className="flex gap-2">
             <button
               onClick={() => setPaused((p) => !p)}
-              className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
+              className="bg-bg-2 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
             >
               {paused ? '▶' : '⏸'}
             </button>
             <button
               onClick={onClose}
-              className="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
+              className="bg-bg-2 hover:bg-zinc-700 px-3 py-2 rounded-lg text-sm"
             >
               ✕
             </button>
@@ -129,19 +129,19 @@ export default function RestTimer({ seconds, onClose }: Props) {
         <div className="flex gap-2">
           <button
             onClick={() => addTime(-15)}
-            className="flex-1 bg-zinc-800 hover:bg-zinc-700 py-1.5 rounded-lg text-xs"
+            className="flex-1 bg-bg-2 hover:bg-zinc-700 py-1.5 rounded-lg text-xs"
           >
             −15s
           </button>
           <button
             onClick={() => addTime(15)}
-            className="flex-1 bg-zinc-800 hover:bg-zinc-700 py-1.5 rounded-lg text-xs"
+            className="flex-1 bg-bg-2 hover:bg-zinc-700 py-1.5 rounded-lg text-xs"
           >
             +15s
           </button>
           <button
             onClick={() => addTime(30)}
-            className="flex-1 bg-zinc-800 hover:bg-zinc-700 py-1.5 rounded-lg text-xs"
+            className="flex-1 bg-bg-2 hover:bg-zinc-700 py-1.5 rounded-lg text-xs"
           >
             +30s
           </button>

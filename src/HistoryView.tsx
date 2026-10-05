@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { getBestSetBy1RM } from './trainingScience';
+import { SubScreen } from './ui';
 
 interface Props {
   onBack: () => void;
@@ -44,34 +45,35 @@ export default function HistoryView({ onBack }: Props) {
     return `${min} min`;
   }
 
-  if (!sessions) return <p className="p-4 text-zinc-400">Carregando...</p>;
+  if (!sessions) return <p className="p-4 text-text-2">Carregando...</p>;
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-4">
+    <SubScreen title="Histórico" onBack={onBack}>
+      <div className="max-w-2xl mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">📜 Histórico</h1>
         <button
           onClick={onBack}
-          className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg"
+          className="bg-bg-2 hover:bg-zinc-700 px-4 py-2 rounded-lg"
         >
           Voltar
         </button>
       </div>
 
       {sessions.length === 0 && (
-        <p className="text-zinc-500">Nenhuma sessão finalizada ainda.</p>
+        <p className="text-text-3">Nenhuma sessão finalizada ainda.</p>
       )}
 
       <ul className="space-y-2">
         {sessions.map((s) => (
-          <li key={s.id} className="bg-bg-surface border border-white/5 rounded-3xl overflow-hidden">
+          <li key={s.id} className="bg-bg-1 border border-white/[0.06] rounded-2xl overflow-hidden">
           <div className="flex">
             <button
               onClick={() => setOpenId(openId === s.id ? null : s.id!)}
               className="flex-1 text-left px-4 py-3 hover:bg-white/5 transition"
             >
               <div className="font-semibold">{workoutName(s.workoutId)}</div>
-              <div className="text-sm text-zinc-400">
+              <div className="text-sm text-text-2">
                 {formatDate(s.startedAt)} · {duration(s.startedAt, s.finishedAt!, s.totalPausedMs)}
               </div>
             </button>
@@ -89,7 +91,9 @@ export default function HistoryView({ onBack }: Props) {
         ))}
       </ul>
     </div>
+    </SubScreen>
   );
+
 }
 
 function SessionDetails({ sessionId }: { sessionId: number }) {
@@ -102,7 +106,7 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
   const session = useLiveQuery(() => db.sessions.get(sessionId), [sessionId]);
 
   // ✅ Agora pode ter return condicional
-  if (!sets) return <p className="p-4 text-zinc-400">Carregando...</p>;
+  if (!sets) return <p className="p-4 text-text-2">Carregando...</p>;
 
   // Agrupa por exercício
   const grouped = sets.reduce<Record<number, typeof sets>>((acc, s) => {
@@ -123,13 +127,13 @@ for (const [exId, list] of Object.entries(grouped)) {
     <div className="border-t border-zinc-800 p-4 space-y-3">
       {/* 📝 Notas da sessão (se houver) */}
       {session?.notes && (
-        <div className="bg-zinc-800 rounded-lg p-3 text-sm text-zinc-300 italic">
+        <div className="bg-bg-2 rounded-lg p-3 text-sm text-text-1 italic">
           📝 {session.notes}
         </div>
       )}
 
       {Object.entries(grouped).length === 0 && (
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-text-3">
           Nenhuma série registrada nesta sessão.
         </p>
       )}
@@ -140,7 +144,7 @@ for (const [exId, list] of Object.entries(grouped)) {
   return (
     <div key={exId}>
       <div className="flex items-center justify-between">
-        <div className="font-medium text-accent-light">
+        <div className="font-medium text-accent">
           {ex?.name ?? 'Exercício removido'}
         </div>
         {best1RM && (
@@ -149,7 +153,7 @@ for (const [exId, list] of Object.entries(grouped)) {
           </div>
         )}
       </div>
-      <ul className="text-xs text-zinc-300 space-y-1 mt-1">
+      <ul className="text-xs text-text-1 space-y-1 mt-1">
         {list.map((s) => (
           <li key={s.id} className="flex justify-between">
             <span>Série {s.setNumber}</span>

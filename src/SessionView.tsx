@@ -131,7 +131,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   if (sessionId === null || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center safe-top safe-bottom">
-        <p className="text-zinc-400">Iniciando sessão...</p>
+        <p className="text-text-2">Iniciando sessão...</p>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   if (!exercises) {
     return (
       <div className="min-h-screen flex items-center justify-center safe-top safe-bottom">
-        <p className="text-zinc-400">Carregando exercícios...</p>
+        <p className="text-text-2">Carregando exercícios...</p>
       </div>
     );
   }
@@ -192,12 +192,12 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
 
         {/* Notas */}
         {showNotes && (
-          <div className="bg-bg-surface border border-white/5 rounded-3xl p-4 space-y-3 animate-slide-up">
-            <label className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">
+          <div className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4 space-y-3 animate-slide-up">
+            <label className="text-xs text-text-3 uppercase tracking-wider font-semibold">
               Anotações da sessão
             </label>
             <textarea
-              className="w-full bg-bg-elevated border border-white/5 rounded-2xl px-4 py-3 outline-none min-h-[100px] resize-y focus:border-accent/50 transition-all"
+              className="w-full bg-bg-2 border border-white/[0.06] rounded-2xl px-4 py-3 outline-none min-h-[100px] resize-y focus:border-accent/50 transition-all"
               placeholder="Ex: ombro esquerdo incomodou no supino..."
               value={notesDraft}
               onChange={(e) => setNotesDraft(e.target.value)}
@@ -205,7 +205,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
             <div className="flex gap-2">
               <button
                 onClick={saveNotes}
-                className="flex-1 bg-accent hover:bg-accent-light py-2.5 rounded-2xl font-semibold transition-all active:scale-[0.98]"
+                className="flex-1 bg-accent hover:bg-accent-hover py-2.5 rounded-2xl font-semibold transition-all active:scale-[0.98]"
               >
                 Salvar notas
               </button>
@@ -282,7 +282,7 @@ function ElapsedTime({
   const s = sec % 60;
 
   return (
-    <p className="text-sm text-accent-light flex items-center gap-2 mt-0.5">
+    <p className="text-sm text-accent flex items-center gap-2 mt-0.5">
       <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
       {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
       {pausedAt && (
@@ -315,7 +315,7 @@ function ExerciseNav({
   const doneIds = new Set((sets ?? []).map((s) => s.exerciseId));
 
   return (
-    <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-bg-base/80 backdrop-blur-xl border-b border-white/5">
+    <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-bg-0/80 backdrop-blur-xl border-b border-white/[0.06]">
       <div className="flex gap-2 overflow-x-auto no-scrollbar">
         {exercises.map((ex) => {
           const done = doneIds.has(ex.id!);
@@ -326,7 +326,7 @@ function ExerciseNav({
               className={`flex-shrink-0 px-3.5 py-2 rounded-full text-xs font-medium transition-all active:scale-95 ${
                 done
                   ? 'bg-accent text-white shadow-glow'
-                  : 'bg-white/5 hover:bg-white/10 text-zinc-300'
+                  : 'bg-white/5 hover:bg-white/10 text-text-1'
               }`}
             >
               {done && '✓ '}
@@ -688,12 +688,12 @@ function ExerciseCard({
   // ───── JSX ─────
   return (
     <div
-      className={`rounded-3xl p-4 space-y-3 border transition-all ${
+      className={`rounded-2xl p-4 space-y-3 border transition-all ${
         beatPR
           ? 'bg-amber-950/30 border-amber-700/50 shadow-glow'
           : done
           ? 'bg-accent/5 border-accent/30'
-          : 'bg-bg-surface border-white/5'
+          : 'bg-bg-1 border-white/[0.06]'
       }`}
     >
       {/* Cabeçalho */}
@@ -722,19 +722,19 @@ function ExerciseCard({
           {pr && (
             <span
               className={`text-[10px] ${
-                beatPR ? 'text-zinc-600 line-through' : 'text-amber-400'
+                beatPR ? 'text-text-3 line-through' : 'text-amber-400'
               }`}
             >
               🏆 {pr.weight} kg × {pr.reps}
             </span>
           )}
           {targetMin && targetMax && (
-            <span className="text-[10px] text-accent-light">
+            <span className="text-[10px] text-accent">
               🎯 {targetMin}–{targetMax} reps
             </span>
           )}
           {done && (
-            <span className="text-[10px] text-accent-light">
+            <span className="text-[10px] text-accent">
               {allSets.length} série{allSets.length > 1 ? 's' : ''}
               {totalTut > 0 && ` · TUT ${totalTut}s`}
             </span>
@@ -744,13 +744,13 @@ function ExerciseCard({
 
       {/* 📊 1RM em tempo real */}
       {best1RM && (
-        <div className="bg-white/5 border border-white/5 rounded-2xl px-3 py-2 text-[11px] text-zinc-400 flex items-center justify-between gap-2">
+        <div className="bg-white/5 border border-white/[0.06] rounded-2xl px-3 py-2 text-[11px] text-text-2 flex items-center justify-between gap-2">
           <span>
             📊 1RM estimado:{' '}
-            <strong className="text-accent-light">
+            <strong className="text-accent">
               {Math.round(best1RM.estimate * 10) / 10} kg
             </strong>
-            <span className="text-zinc-600">
+            <span className="text-text-3">
               {' '}
               (de {best1RM.set.reps}×{best1RM.set.weight} kg
               {best1RM.set.rpe !== undefined &&
@@ -788,7 +788,7 @@ function ExerciseCard({
 
       {/* Nota permanente do exercício */}
       {exercise.note && (
-        <div className="bg-white/5 border border-white/5 rounded-2xl px-3 py-2 text-xs text-zinc-300 italic">
+        <div className="bg-white/5 border border-white/[0.06] rounded-2xl px-3 py-2 text-xs text-text-1 italic">
           📝 {exercise.note}
         </div>
       )}
@@ -800,7 +800,7 @@ function ExerciseCard({
           <div
             className={`rounded-2xl px-3 py-2.5 text-xs flex items-center justify-between gap-2 animate-slide-up ${
               rirSuggestion.direction === 'up'
-                ? 'bg-emerald-950/40 border border-emerald-700/50 text-emerald-300'
+                ? 'bg-emerald-950/40 border border-emerald-700/50 text-accent'
                 : 'bg-blue-950/40 border border-blue-700/50 text-blue-300'
             }`}
           >
@@ -820,7 +820,7 @@ function ExerciseCard({
               }
               className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap active:scale-95 transition-all ${
                 rirSuggestion.direction === 'up'
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  ? 'bg-accent hover:bg-accent-hover text-white'
                   : 'bg-blue-600 hover:bg-blue-500 text-white'
               }`}
             >
@@ -833,7 +833,7 @@ function ExerciseCard({
       {exercise.useRIR &&
         rirSuggestion &&
         rirSuggestion.direction === 'keep' && (
-          <div className="bg-white/5 border border-white/5 rounded-2xl px-3 py-2 text-[11px] text-zinc-400">
+          <div className="bg-white/5 border border-white/[0.06] rounded-2xl px-3 py-2 text-[11px] text-text-2">
             🧠 RIR {rirSuggestion.reportedRIR} (alvo{' '}
             {rirSuggestion.targetRIR}) — mantendo carga
           </div>
@@ -841,7 +841,7 @@ function ExerciseCard({
 
       {/* 💡 Sugestão de carga */}
       {analysis?.suggestedWeight && (
-        <div className="bg-accent/10 border border-accent/30 rounded-2xl px-3 py-2.5 text-xs text-accent-light flex items-center justify-between gap-2 animate-slide-up">
+        <div className="bg-accent/10 border border-accent/30 rounded-2xl px-3 py-2.5 text-xs text-accent flex items-center justify-between gap-2 animate-slide-up">
           <span>
             💡 Bateu {exercise.targetRepsMax} reps em todas as séries nas
             últimas 2 sessões. Suba para{' '}
@@ -849,7 +849,7 @@ function ExerciseCard({
           </span>
           <button
             onClick={() => setWeight(String(analysis.suggestedWeight))}
-            className="bg-accent hover:bg-accent-light px-2.5 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap active:scale-95 transition-all"
+            className="bg-accent hover:bg-accent-hover px-2.5 py-1 rounded-lg text-[10px] font-bold text-white whitespace-nowrap active:scale-95 transition-all"
           >
             Usar
           </button>
@@ -877,27 +877,27 @@ function ExerciseCard({
                   key={s.id}
                   className="bg-accent/10 border border-accent/30 rounded-2xl p-2.5 space-y-2"
                 >
-                  <div className="text-[10px] text-zinc-400">
+                  <div className="text-[10px] text-text-2">
                     Editando série {s.setNumber}
                   </div>
                   <div className="flex gap-1.5">
                     <input
                       autoFocus
-                      className="flex-1 bg-bg-overlay border border-white/5 rounded-xl px-2 py-1.5 text-xs text-center outline-none focus:border-accent/50"
+                      className="flex-1 bg-bg-3 border border-white/[0.06] rounded-xl px-2 py-1.5 text-xs text-center outline-none focus:border-accent/50"
                       inputMode="numeric"
                       placeholder="reps"
                       value={editReps}
                       onChange={(e) => setEditReps(e.target.value)}
                     />
                     <input
-                      className="flex-1 bg-bg-overlay border border-white/5 rounded-xl px-2 py-1.5 text-xs text-center outline-none focus:border-accent/50"
+                      className="flex-1 bg-bg-3 border border-white/[0.06] rounded-xl px-2 py-1.5 text-xs text-center outline-none focus:border-accent/50"
                       inputMode="decimal"
                       placeholder="kg"
                       value={editWeight}
                       onChange={(e) => setEditWeight(e.target.value)}
                     />
                     <select
-                      className="bg-bg-overlay border border-white/5 rounded-xl px-2 py-1.5 text-xs outline-none focus:border-accent/50"
+                      className="bg-bg-3 border border-white/[0.06] rounded-xl px-2 py-1.5 text-xs outline-none focus:border-accent/50"
                       value={editRpe ?? ''}
                       onChange={(e) =>
                         setEditRpe(
@@ -918,7 +918,7 @@ function ExerciseCard({
                   <div className="flex gap-1.5">
                     <button
                       onClick={saveEditSet}
-                      className="flex-1 bg-accent hover:bg-accent-light py-1.5 rounded-xl text-xs font-medium active:scale-95 transition-all"
+                      className="flex-1 bg-accent hover:bg-accent-hover py-1.5 rounded-xl text-xs font-medium active:scale-95 transition-all"
                     >
                       ✓ Salvar
                     </button>
@@ -965,7 +965,7 @@ function ExerciseCard({
                 className={`flex justify-between items-center rounded-2xl px-3 py-2 text-xs gap-2 ${
                   isPRSet
                     ? 'bg-amber-900/30 border border-amber-700/40'
-                    : 'bg-bg-elevated border border-white/5'
+                    : 'bg-bg-2 border border-white/[0.06]'
                 }`}
               >
                 <span className="flex flex-wrap items-center gap-1.5 min-w-0">
@@ -994,13 +994,13 @@ function ExerciseCard({
                   )}
 
                   {s.tutSeconds !== undefined && (
-                    <span className="text-[10px] text-zinc-500">
+                    <span className="text-[10px] text-text-3">
                       {s.tutSeconds}s
                     </span>
                   )}
 
                   {s.rpe !== undefined && (
-                    <span className="text-[10px] text-zinc-500">
+                    <span className="text-[10px] text-text-3">
                       RPE {s.rpe}
                     </span>
                   )}
@@ -1018,7 +1018,7 @@ function ExerciseCard({
                 <span className="flex items-center gap-1 flex-shrink-0">
                   {s.note && (
                     <span
-                      className="text-[10px] text-zinc-500 italic truncate max-w-[80px]"
+                      className="text-[10px] text-text-3 italic truncate max-w-[80px]"
                       title={s.note}
                     >
                       📝
@@ -1050,7 +1050,7 @@ function ExerciseCard({
         <button
           type="button"
           onClick={quickAdd}
-          className="w-full bg-accent/15 hover:bg-accent/25 border border-accent/30 py-2.5 rounded-2xl text-xs font-medium text-accent-light active:scale-[0.98] transition-all"
+          className="w-full bg-accent/15 hover:bg-accent/25 border border-accent/30 py-2.5 rounded-2xl text-xs font-medium text-accent active:scale-[0.98] transition-all"
         >
           ⚡ Repetir última ({lastSet.reps} × {lastSet.weight} kg)
         </button>
@@ -1059,14 +1059,14 @@ function ExerciseCard({
       {/* Input principal */}
       <div className="flex gap-2">
         <input
-          className="flex-1 min-w-0 bg-bg-elevated border border-white/5 rounded-2xl px-3 py-3 text-base outline-none focus:border-accent/50 transition-all placeholder:text-zinc-500 text-center"
+          className="flex-1 min-w-0 bg-bg-2 border border-white/[0.06] rounded-2xl px-3 py-3 text-base outline-none focus:border-accent/50 transition-all placeholder:text-text-3 text-center"
           placeholder={lastSet ? `${lastSet.reps}` : 'reps'}
           inputMode="numeric"
           value={reps}
           onChange={(e) => setReps(e.target.value)}
         />
         <input
-          className="flex-1 min-w-0 bg-bg-elevated border border-white/5 rounded-2xl px-3 py-3 text-base outline-none focus:border-accent/50 transition-all placeholder:text-zinc-500 text-center"
+          className="flex-1 min-w-0 bg-bg-2 border border-white/[0.06] rounded-2xl px-3 py-3 text-base outline-none focus:border-accent/50 transition-all placeholder:text-text-3 text-center"
           placeholder={lastSet ? `${lastSet.weight}` : 'kg'}
           inputMode="decimal"
           value={weight}
@@ -1074,7 +1074,7 @@ function ExerciseCard({
         />
         <button
           onClick={() => addSet()}
-          className="bg-accent hover:bg-accent-light w-14 rounded-2xl font-bold text-xl flex items-center justify-center shadow-glow active:scale-95 transition-all"
+          className="bg-accent hover:bg-accent-hover w-14 rounded-2xl font-bold text-xl flex items-center justify-center shadow-glow active:scale-95 transition-all"
         >
           +
         </button>
@@ -1092,7 +1092,7 @@ function ExerciseCard({
             🏷 {typeLabel(type)}
           </button>
           {showTypeMenu && (
-            <div className="absolute bottom-full mb-1 z-20 bg-bg-overlay border border-white/10 rounded-2xl p-1 shadow-elevated w-44 animate-scale-in">
+            <div className="absolute bottom-full mb-1 z-20 bg-bg-3 border border-white/10 rounded-2xl p-1 shadow-elevated w-44 animate-scale-in">
               {(
                 [
                   'normal',
@@ -1111,7 +1111,7 @@ function ExerciseCard({
                     setShowTypeMenu(false);
                   }}
                   className={`w-full text-left text-xs px-3 py-2 rounded-xl hover:bg-white/5 ${
-                    type === t ? 'text-accent-light' : 'text-zinc-300'
+                    type === t ? 'text-accent' : 'text-text-1'
                   }`}
                 >
                   {typeLabel(t)}
@@ -1126,7 +1126,7 @@ function ExerciseCard({
           className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-medium transition-all active:scale-95 ${
             tutStart !== null
               ? 'bg-red-500/20 border-red-500/40 text-red-300'
-              : 'bg-white/5 border-white/5 text-zinc-400'
+              : 'bg-white/5 border-white/[0.06] text-text-2'
           }`}
         >
           ⏱ {tutStart !== null ? formatTut(tutElapsed) : 'TUT'}
@@ -1135,14 +1135,14 @@ function ExerciseCard({
         {tutElapsed > 0 && (
           <button
             onClick={resetTut}
-            className="text-[10px] px-2 py-1.5 text-zinc-600 hover:text-zinc-400"
+            className="text-[10px] px-2 py-1.5 text-text-3 hover:text-text-2"
           >
             zerar
           </button>
         )}
 
-        <div className="flex items-center gap-1 bg-white/5 border border-white/5 rounded-xl px-2 py-1.5">
-          <span className="text-[10px] text-zinc-500">RPE</span>
+        <div className="flex items-center gap-1 bg-white/5 border border-white/[0.06] rounded-xl px-2 py-1.5">
+          <span className="text-[10px] text-text-3">RPE</span>
           <select
             value={rpe ?? ''}
             onChange={(e) =>
@@ -1152,13 +1152,13 @@ function ExerciseCard({
           >
             <option value="">–</option>
             {[6, 7, 8, 9, 10].map((v) => (
-              <option key={v} value={v} className="bg-bg-overlay">
+              <option key={v} value={v} className="bg-bg-3">
                 {v}
               </option>
             ))}
           </select>
           {rpe !== undefined && (
-            <span className="text-[10px] text-zinc-500">
+            <span className="text-[10px] text-text-3">
               · RIR {10 - rpe}
             </span>
           )}
@@ -1168,8 +1168,8 @@ function ExerciseCard({
           onClick={() => setShowNote((v) => !v)}
           className={`text-[10px] px-2.5 py-1.5 rounded-xl border font-medium transition-all active:scale-95 ${
             note
-              ? 'bg-accent/20 border-accent/40 text-accent-light'
-              : 'bg-white/5 border-white/5 text-zinc-400'
+              ? 'bg-accent/20 border-accent/40 text-accent'
+              : 'bg-white/5 border-white/[0.06] text-text-2'
           }`}
         >
           📝
@@ -1178,7 +1178,7 @@ function ExerciseCard({
 
       {showNote && (
         <input
-          className="w-full bg-bg-elevated border border-white/5 rounded-2xl px-3 py-2.5 outline-none text-sm focus:border-accent/50 transition-all animate-slide-up"
+          className="w-full bg-bg-2 border border-white/[0.06] rounded-2xl px-3 py-2.5 outline-none text-sm focus:border-accent/50 transition-all animate-slide-up"
           placeholder="Nota da série (ex: falhou na 8ª)"
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -1212,7 +1212,7 @@ function typeLabel(t: SetType): string {
 function typeBadgeStyle(t: SetType): string {
   switch (t) {
     case 'warmup':
-      return 'bg-white/5 border-white/5 text-zinc-500';
+      return 'bg-white/5 border-white/[0.06] text-text-3';
     case 'drop':
       return 'bg-red-500/15 border-red-500/30 text-red-300';
     case 'myo':
@@ -1224,7 +1224,7 @@ function typeBadgeStyle(t: SetType): string {
     case 'failure':
       return 'bg-yellow-500/15 border-yellow-500/30 text-yellow-300';
     default:
-      return 'bg-white/5 border-white/5 text-zinc-400';
+      return 'bg-white/5 border-white/[0.06] text-text-2';
   }
 }
 
@@ -1258,7 +1258,7 @@ function SessionSummary({
   if (!session || !sets || !exercises) {
     return (
       <div className="min-h-screen flex items-center justify-center safe-top safe-bottom">
-        <p className="text-zinc-400">Calculando resumo...</p>
+        <p className="text-text-2">Calculando resumo...</p>
       </div>
     );
   }
@@ -1285,7 +1285,7 @@ function SessionSummary({
           <h1 className="text-3xl font-bold tracking-tight">
             Treino concluído!
           </h1>
-          <p className="text-zinc-500 text-sm">
+          <p className="text-text-3 text-sm">
             {new Date(startedAt).toLocaleString('pt-BR')}
           </p>
         </div>
@@ -1313,18 +1313,18 @@ function SessionSummary({
         </div>
 
         <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-1">
+          <h2 className="text-xs font-semibold text-text-3 uppercase tracking-wider px-1">
             Detalhes
           </h2>
           {groupByExercise(sets, exercises).map((g) => (
             <div
               key={g.exerciseId}
-              className="bg-bg-surface border border-white/5 rounded-3xl p-4"
+              className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4"
             >
-              <div className="font-medium text-accent-light mb-2">
+              <div className="font-medium text-accent mb-2">
                 {g.exerciseName}
               </div>
-              <ul className="text-xs text-zinc-300 space-y-1">
+              <ul className="text-xs text-text-1 space-y-1">
                 {g.sets.map((s) => (
                   <li key={s.id} className="flex justify-between">
                     <span>Série {s.setNumber}</span>
@@ -1340,18 +1340,18 @@ function SessionSummary({
         </div>
 
         {session.notes && (
-          <div className="bg-bg-surface border border-white/5 rounded-3xl p-4">
-            <div className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-2">
+          <div className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4">
+            <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-2">
               📝 Notas
             </div>
-            <p className="text-sm italic text-zinc-300">{session.notes}</p>
+            <p className="text-sm italic text-text-1">{session.notes}</p>
           </div>
         )}
 
         <div className="flex gap-2 pt-2">
           <button
             onClick={onRepeat}
-            className="flex-1 bg-accent hover:bg-accent-light py-4 rounded-2xl font-semibold shadow-glow active:scale-[0.98] transition-all"
+            className="flex-1 bg-accent hover:bg-accent-hover py-4 rounded-2xl font-semibold shadow-glow active:scale-[0.98] transition-all"
           >
             🔄 Refazer
           </button>
@@ -1380,15 +1380,15 @@ function SummaryCard({
 }) {
   return (
     <div
-      className={`rounded-3xl p-4 text-center border ${
+      className={`rounded-2xl p-4 text-center border ${
         highlight
           ? 'bg-accent/10 border-accent/30 shadow-glow'
-          : 'bg-bg-surface border-white/5'
+          : 'bg-bg-1 border-white/[0.06]'
       }`}
     >
       <div className="text-2xl mb-1">{icon}</div>
       <div className="text-lg font-bold tracking-tight">{value}</div>
-      <div className="text-[10px] text-zinc-500 mt-0.5 uppercase tracking-wider">
+      <div className="text-[10px] text-text-3 mt-0.5 uppercase tracking-wider">
         {label}
       </div>
     </div>

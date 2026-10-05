@@ -16,6 +16,7 @@ import {
   extract1RMTimeline,
   forecastPR,
 } from './trainingScience';
+import { SubScreen } from './ui';
 
 interface Props {
   onBack: () => void;
@@ -42,7 +43,7 @@ export default function ExerciseProgressView({ onBack }: Props) {
   }, []);
 
   if (!exercisesWithData) {
-    return <p className="p-4 text-zinc-400">Carregando...</p>;
+    return <p className="p-4 text-text-2">Carregando...</p>;
   }
 
   if (exercisesWithData.length === 0) {
@@ -52,12 +53,12 @@ export default function ExerciseProgressView({ onBack }: Props) {
           <h1 className="text-2xl font-bold">📈 Progresso por Exercício</h1>
           <button
             onClick={onBack}
-            className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg"
+            className="bg-bg-2 hover:bg-zinc-700 px-4 py-2 rounded-lg"
           >
             Voltar
           </button>
         </div>
-        <p className="text-zinc-500 text-sm">
+        <p className="text-text-3 text-sm">
           Nenhum exercício com séries registradas ainda. Complete algumas
           sessões primeiro.
         </p>
@@ -68,12 +69,13 @@ export default function ExerciseProgressView({ onBack }: Props) {
   const selected = exerciseName ?? exercisesWithData[0].name;
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-4">
+    <SubScreen title="ExercisioProgressao" onBack={onBack}>
+      <div className="max-w-2xl mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">📈 Progresso</h1>
         <button
           onClick={onBack}
-          className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg"
+          className="bg-bg-2 hover:bg-zinc-700 px-4 py-2 rounded-lg"
         >
           Voltar
         </button>
@@ -83,7 +85,7 @@ export default function ExerciseProgressView({ onBack }: Props) {
       <select
         value={selected}
         onChange={(e) => setExerciseName(e.target.value)}
-        className="w-full bg-zinc-900 rounded-lg px-3 py-2 outline-none border border-zinc-800"
+        className="w-full bg-bg-1 rounded-lg px-3 py-2 outline-none border border-zinc-800"
       >
         {exercisesWithData.map((e) => (
           <option key={e.name} value={e.name}>
@@ -94,7 +96,9 @@ export default function ExerciseProgressView({ onBack }: Props) {
 
       <ExerciseChart exerciseName={selected} />
     </div>
+    </SubScreen>
   );
+
 }
 
 function ExerciseChart({ exerciseName }: { exerciseName: string }) {
@@ -195,12 +199,12 @@ const forecast = useLiveQuery(
 );
 
   if (!data) {
-    return <p className="p-4 text-zinc-400">Carregando gráfico...</p>;
+    return <p className="p-4 text-text-2">Carregando gráfico...</p>;
   }
 
   if (data.points.length === 0) {
     return (
-      <p className="text-zinc-500 text-sm">
+      <p className="text-text-3 text-sm">
         Sem séries registradas para esse exercício.
       </p>
     );
@@ -218,41 +222,41 @@ const forecast = useLiveQuery(
     <div className="space-y-4">
       {/* Cards de destaque */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-zinc-900 rounded-2xl p-4 text-center">
-          <div className="text-xs text-zinc-400">Carga atual</div>
+        <div className="bg-bg-1 rounded-2xl p-4 text-center">
+          <div className="text-xs text-text-2">Carga atual</div>
           <div className="text-xl font-bold">{lastPoint.maxWeight} kg</div>
-          <div className="text-xs text-zinc-500">{lastPoint.topReps} reps</div>
+          <div className="text-xs text-text-3">{lastPoint.topReps} reps</div>
         </div>
-        <div className="bg-zinc-900 rounded-2xl p-4 text-center">
-          <div className="text-xs text-zinc-400">1RM estimado</div>
+        <div className="bg-bg-1 rounded-2xl p-4 text-center">
+          <div className="text-xs text-text-2">1RM estimado</div>
           <div className="text-xl font-bold">{lastPoint.oneRM} kg</div>
-          <div className="text-xs text-zinc-500">Epley</div>
+          <div className="text-xs text-text-3">Epley</div>
         </div>
-        <div className="bg-zinc-900 rounded-2xl p-4 text-center">
-          <div className="text-xs text-zinc-400">Progresso total</div>
+        <div className="bg-bg-1 rounded-2xl p-4 text-center">
+          <div className="text-xs text-text-2">Progresso total</div>
           <div
             className={`text-xl font-bold ${
-              gain > 0 ? 'text-emerald-400' : 'text-zinc-400'
+              gain > 0 ? 'text-accent' : 'text-text-2'
             }`}
           >
             {gain > 0 ? '+' : ''}
             {gain} kg
           </div>
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-text-3">
             {gainPct > 0 ? '+' : ''}
             {gainPct}%
           </div>
         </div>
-        <div className="bg-zinc-900 rounded-2xl p-4 text-center">
-          <div className="text-xs text-zinc-400">Sessões</div>
+        <div className="bg-bg-1 rounded-2xl p-4 text-center">
+          <div className="text-xs text-text-2">Sessões</div>
           <div className="text-xl font-bold">{data.points.length}</div>
-          <div className="text-xs text-zinc-500">registradas</div>
+          <div className="text-xs text-text-3">registradas</div>
         </div>
       </div>
 
       {/* 🔮 Previsão de PR */}
 {forecast?.next && (
-  <section className="bg-purple-950/30 border border-purple-800/50 rounded-3xl p-4 space-y-3">
+  <section className="bg-purple-950/30 border border-purple-800/50 rounded-2xl p-4 space-y-3">
     <div className="flex items-center justify-between">
       <h3 className="text-sm font-semibold text-purple-200">
         🔮 Previsão de PR
@@ -283,11 +287,11 @@ const forecast = useLiveQuery(
     {/* Taxa atual */}
     <div className="bg-white/5 rounded-2xl px-3 py-2 text-[11px]">
       <div className="flex justify-between">
-        <span className="text-zinc-400">Taxa de progresso</span>
+        <span className="text-text-2">Taxa de progresso</span>
         <span
           className={`font-semibold ${
             forecast.next.rate.slopePerWeek > 0
-              ? 'text-emerald-400'
+              ? 'text-accent'
               : 'text-red-400'
           }`}
         >
@@ -296,21 +300,21 @@ const forecast = useLiveQuery(
         </span>
       </div>
       <div className="flex justify-between mt-1">
-        <span className="text-zinc-500 text-[10px]">
+        <span className="text-text-3 text-[10px]">
           Baseado em {forecast.next.rate.dataPoints} sessões
         </span>
       </div>
     </div>
 
-    <div className="text-[10px] text-zinc-500 pt-2 border-t border-white/5">
+    <div className="text-[10px] text-text-3 pt-2 border-t border-white/[0.06]">
       Base: Stone (1981), Rhea (2002), Helms (2018)
     </div>
   </section>
 )}
 
       {/* Gráfico */}
-      <div className="bg-zinc-900 rounded-2xl p-4">
-        <h3 className="font-semibold mb-3 text-sm text-zinc-300">
+      <div className="bg-bg-1 rounded-2xl p-4">
+        <h3 className="font-semibold mb-3 text-sm text-text-1">
           Evolução de carga
         </h3>
         <div style={{ width: '100%', height: 220 }}>
@@ -356,7 +360,7 @@ const forecast = useLiveQuery(
 
       {/* Info sobre a faixa alvo */}
       {data.targetMin && data.targetMax && (
-        <p className="text-xs text-zinc-500 text-center">
+        <p className="text-xs text-text-3 text-center">
           🎯 Faixa alvo: {data.targetMin}–{data.targetMax} reps
         </p>
       )}
@@ -381,7 +385,7 @@ function ForecastItem({
   accent: 'emerald' | 'purple';
 }) {
   const accentColor =
-    accent === 'emerald' ? 'text-emerald-400' : 'text-purple-400';
+    accent === 'emerald' ? 'text-accent' : 'text-purple-400';
 
   function formatDate(ts: number) {
     return new Date(ts).toLocaleDateString('pt-BR', {
@@ -394,7 +398,7 @@ function ForecastItem({
   return (
     <div className="bg-white/5 rounded-2xl px-3 py-2.5 space-y-1">
       <div className="flex justify-between items-center">
-        <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
+        <span className="text-[10px] text-text-3 uppercase tracking-wider">
           {label}
         </span>
         <span className={`text-sm font-bold ${accentColor}`}>
@@ -405,10 +409,10 @@ function ForecastItem({
       {forecast.weeksToTarget !== null ? (
         <>
           <div className="flex justify-between text-[11px]">
-            <span className="text-zinc-400">
+            <span className="text-text-2">
               Faltam <strong className="text-white">{forecast.gap} kg</strong>
             </span>
-            <span className="text-zinc-400">
+            <span className="text-text-2">
               ~
               <strong className="text-white">
                 {forecast.weeksToTarget} semana
@@ -417,18 +421,18 @@ function ForecastItem({
             </span>
           </div>
           {forecast.estimatedDate && (
-            <div className="text-[10px] text-zinc-500">
+            <div className="text-[10px] text-text-3">
               📅 Por volta de {formatDate(forecast.estimatedDate)}
             </div>
           )}
         </>
       ) : (
-        <div className="text-[11px] text-zinc-400">
+        <div className="text-[11px] text-text-2">
           Sem previsão confiável ainda
         </div>
       )}
 
-      <div className="text-[10px] text-zinc-500 italic pt-1">
+      <div className="text-[10px] text-text-3 italic pt-1">
         {forecast.note}
       </div>
     </div>

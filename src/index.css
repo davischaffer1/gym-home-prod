@@ -1,18 +1,22 @@
-/* Reset básico */
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
-  background-color: #0a0a0c;
-  color: #fafafa;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+  background-color: #08080a;
+  color: #d4d4d8;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter',
+    system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none;
+  text-rendering: optimizeLegibility;
 }
 
-/* Safe area para iPhone (notch + home indicator) */
+/* Safe area (notch + home indicator iPhone) */
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }
@@ -24,7 +28,7 @@ html, body, #root {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Esconder scrollbar */
+/* Scrollbar oculta */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -33,18 +37,50 @@ html, body, #root {
   scrollbar-width: none;
 }
 
-/* Inputs sem zoom automático no iOS (precisa font-size >= 16px) */
-input, textarea, select {
+/* Inputs sem zoom no iOS */
+input,
+textarea,
+select {
   font-size: 16px;
 }
 
-/* Botões com feedback tátil */
-button:active {
+/* Feedback tátil em botões */
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+button:active:not(:disabled) {
   transform: scale(0.97);
-  transition: transform 0.1s;
 }
 
-/* Animação de entrada para modais e cards */
-.animate-in {
-  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+/* Transição suave global */
+a,
+button {
+  transition: all 0.15s ease;
+}
+
+/* Foco acessível */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(34, 211, 168, 0.5);
+  outline-offset: 2px;
+}
+
+/* Scrollbar fina no desktop */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
 }

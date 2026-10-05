@@ -17,6 +17,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
+import { SubScreen } from './ui';
 
 interface Props {
   onBack: () => void;
@@ -82,7 +83,7 @@ export default function DashboardView({ onBack }: Props) {
 
   // ✅ AGORA sim os returns condicionais
   if (!sessions || !sets || !exercises) {
-    return <p className="p-4 text-zinc-400">Carregando estatísticas...</p>;
+    return <p className="p-4 text-text-2">Carregando estatísticas...</p>;
   }
 
   // ───── Cálculos (sem hooks) ─────
@@ -177,7 +178,8 @@ export default function DashboardView({ onBack }: Props) {
   // ───── JSX ─────
 
   return (
-    <div className="min-h-screen safe-top safe-bottom safe-x">
+    <SubScreen title="DashboardVisualizador" onBack={onBack}>
+      <div className="min-h-screen safe-top safe-bottom safe-x">
       <div className="max-w-lg mx-auto px-4 pt-4 pb-12 space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
@@ -194,7 +196,7 @@ export default function DashboardView({ onBack }: Props) {
 
         {/* Banner de deload */}
         {deloadInfo.yes && (
-          <div className="bg-amber-950/50 border border-amber-700/50 rounded-3xl p-4 space-y-3">
+          <div className="bg-amber-950/50 border border-amber-700/50 rounded-2xl p-4 space-y-3">
             <div className="flex items-start gap-3">
               <span className="text-2xl">⚠️</span>
               <div className="flex-1">
@@ -205,7 +207,7 @@ export default function DashboardView({ onBack }: Props) {
                   {deloadInfo.reason}. Reduza o volume em ~40–50% mantendo a
                   intensidade por 1 semana.
                 </div>
-                <div className="text-xs text-zinc-400 mt-2">
+                <div className="text-xs text-text-2 mt-2">
                   Base: Bell et al. (2020), Issurin (2010)
                 </div>
               </div>
@@ -222,7 +224,7 @@ export default function DashboardView({ onBack }: Props) {
         {/* 🔮 Próximo PR mais perto */}
         {bestForecast?.forecast &&
           bestForecast.forecast.weeksToTarget !== null && (
-            <section className="bg-purple-950/30 border border-purple-800/50 rounded-3xl p-4 space-y-2">
+            <section className="bg-purple-950/30 border border-purple-800/50 rounded-2xl p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-purple-200">
                   🔮 PR mais próximo
@@ -236,7 +238,7 @@ export default function DashboardView({ onBack }: Props) {
                 </span>
               </div>
 
-              <div className="text-sm text-zinc-300">
+              <div className="text-sm text-text-1">
                 <strong>{bestForecast.exerciseName}</strong>
               </div>
 
@@ -245,7 +247,7 @@ export default function DashboardView({ onBack }: Props) {
                   <div className="text-2xl font-bold text-purple-300">
                     {bestForecast.forecast.target} kg
                   </div>
-                  <div className="text-[10px] text-zinc-500">
+                  <div className="text-[10px] text-text-3">
                     +{bestForecast.forecast.gap} kg de onde você está
                   </div>
                 </div>
@@ -253,7 +255,7 @@ export default function DashboardView({ onBack }: Props) {
                   <div className="text-lg font-bold">
                     ~{bestForecast.forecast.weeksToTarget} sem
                   </div>
-                  <div className="text-[10px] text-zinc-500">
+                  <div className="text-[10px] text-text-3">
                     {bestForecast.forecast.estimatedDate
                       ? new Date(
                           bestForecast.forecast.estimatedDate
@@ -266,7 +268,7 @@ export default function DashboardView({ onBack }: Props) {
                 </div>
               </div>
 
-              <div className="text-[10px] text-zinc-500 pt-2 border-t border-white/5 italic">
+              <div className="text-[10px] text-text-3 pt-2 border-t border-white/[0.06] italic">
                 {bestForecast.forecast.note}
               </div>
             </section>
@@ -309,10 +311,10 @@ export default function DashboardView({ onBack }: Props) {
 
         {/* 🎯 Séries efetivas por grupo */}
         {visibleGroups.length > 0 && (
-          <section className="bg-bg-surface border border-white/5 rounded-3xl p-4 space-y-4">
+          <section className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">🎯 Séries efetivas (semana)</h2>
-              <span className="text-[10px] text-zinc-500">RIR ≤ 3</span>
+              <span className="text-[10px] text-text-3">RIR ≤ 3</span>
             </div>
 
             <div className="space-y-3">
@@ -321,7 +323,7 @@ export default function DashboardView({ onBack }: Props) {
               ))}
             </div>
 
-            <div className="text-[10px] text-zinc-500 pt-2 border-t border-white/5">
+            <div className="text-[10px] text-text-3 pt-2 border-t border-white/[0.06]">
               Base: Refalo et al. (2021, 2023), Schoenfeld et al. (2021)
             </div>
           </section>
@@ -329,10 +331,10 @@ export default function DashboardView({ onBack }: Props) {
 
         {/* 🧪 Ativação de fibras */}
         {visibleFiber.length > 0 && (
-          <section className="bg-bg-surface border border-white/5 rounded-3xl p-4 space-y-4">
+          <section className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">🧪 Ativação de fibras</h2>
-              <span className="text-[10px] text-zinc-500">
+              <span className="text-[10px] text-text-3">
                 Tipo I / Tipo II
               </span>
             </div>
@@ -343,20 +345,20 @@ export default function DashboardView({ onBack }: Props) {
               ))}
             </div>
 
-            <div className="text-[10px] text-zinc-500 pt-2 border-t border-white/5">
+            <div className="text-[10px] text-text-3 pt-2 border-t border-white/[0.06]">
               Base: Henneman (1965), Grgic (2020), Lasevicius (2018, 2022)
             </div>
           </section>
         )}
 
         {/* Gráfico: volume por semana */}
-        <section className="bg-bg-surface border border-white/5 rounded-3xl p-4">
+        <section className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4">
           <h2 className="font-semibold mb-3">Volume semanal (kg)</h2>
           <WeeklyChart data={weeklyVolume} dataKey="volume" color="#10b981" />
         </section>
 
         {/* Gráfico: sessões por semana */}
-        <section className="bg-bg-surface border border-white/5 rounded-3xl p-4">
+        <section className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4">
           <h2 className="font-semibold mb-3">Treinos por semana</h2>
           <WeeklyChart
             data={weeklySessions}
@@ -366,7 +368,7 @@ export default function DashboardView({ onBack }: Props) {
         </section>
 
         {/* Resumo das últimas sessões */}
-        <section className="bg-bg-surface border border-white/5 rounded-3xl p-4 space-y-3">
+        <section className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4 space-y-3">
           <h2 className="font-semibold">Últimas sessões</h2>
           {sessions.slice(0, 5).map((s) => {
             const sessSets = sets.filter((x) => x.sessionId === s.id);
@@ -377,12 +379,12 @@ export default function DashboardView({ onBack }: Props) {
             return (
               <div
                 key={s.id}
-                className="flex justify-between bg-bg-elevated border border-white/5 rounded-2xl px-3 py-2 text-xs"
+                className="flex justify-between bg-bg-2 border border-white/[0.06] rounded-2xl px-3 py-2 text-xs"
               >
                 <span>
                   {new Date(s.startedAt).toLocaleDateString('pt-BR')}
                 </span>
-                <span className="text-zinc-400">
+                <span className="text-text-2">
                   {sessSets.length} séries · {vol.toLocaleString('pt-BR')} kg
                   · {mins} min
                 </span>
@@ -392,7 +394,9 @@ export default function DashboardView({ onBack }: Props) {
         </section>
       </div>
     </div>
+    </SubScreen>
   );
+
 }
 
 /* ---------- Chart ---------- */
@@ -443,15 +447,15 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-3xl p-4 text-center border ${
+      className={`rounded-2xl p-4 text-center border ${
         highlight
           ? 'bg-accent/10 border-accent/30 shadow-glow'
-          : 'bg-bg-surface border-white/5'
+          : 'bg-bg-1 border-white/[0.06]'
       }`}
     >
       <div className="text-2xl mb-1">{icon}</div>
       <div className="text-lg font-bold tracking-tight">{value}</div>
-      <div className="text-[10px] text-zinc-500 mt-0.5 uppercase tracking-wider">
+      <div className="text-[10px] text-text-3 mt-0.5 uppercase tracking-wider">
         {label}
       </div>
     </div>
@@ -473,13 +477,13 @@ function VolumeBar({
 
   const statusColor = {
     baixo: 'text-blue-400',
-    ótimo: 'text-emerald-400',
+    ótimo: 'text-accent',
     alto: 'text-amber-400',
   }[status];
 
   const barColor = {
     baixo: 'bg-blue-500',
-    ótimo: 'bg-emerald-500',
+    ótimo: 'bg-accent-hover',
     alto: 'bg-amber-500',
   }[status];
 
@@ -496,9 +500,9 @@ function VolumeBar({
           <span className="text-sm font-medium">{group.group}</span>
           <span className={`text-[10px] ${statusColor}`}>{statusLabel}</span>
         </div>
-        <span className="text-xs text-zinc-400">
+        <span className="text-xs text-text-2">
           <strong className="text-white">{count}</strong>
-          <span className="text-zinc-500">
+          <span className="text-text-3">
             {' '}
             / {target.min}–{target.max}
           </span>
@@ -536,9 +540,9 @@ function FiberBar({
 
   const statusColor = {
     'pouco-II': 'text-blue-400',
-    equilibrado: 'text-emerald-400',
+    equilibrado: 'text-accent',
     'muito-II': 'text-amber-400',
-    'sem-dados': 'text-zinc-500',
+    'sem-dados': 'text-text-3',
   }[group.status];
 
   const statusLabel = {
@@ -555,12 +559,12 @@ function FiberBar({
           <span className="text-sm font-medium">{group.group}</span>
           <span className={`text-[10px] ${statusColor}`}>{statusLabel}</span>
         </div>
-        <span className="text-[10px] text-zinc-500">
+        <span className="text-[10px] text-text-3">
           {group.countTypeII}/{group.countTypeI} tipo II
         </span>
       </div>
 
-      <div className="w-full h-2.5 bg-zinc-800 rounded-full overflow-hidden relative">
+      <div className="w-full h-2.5 bg-bg-2 rounded-full overflow-hidden relative">
         <div className="absolute inset-0 bg-blue-900/40" />
         <div
           className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${
@@ -574,7 +578,7 @@ function FiberBar({
         />
       </div>
 
-      <div className="text-[10px] text-zinc-500 mt-1">
+      <div className="text-[10px] text-text-3 mt-1">
         {pctII}% das séries ativaram fibras tipo II
       </div>
     </div>

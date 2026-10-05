@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { useMemo, useState } from 'react';
+import { SubScreen } from './ui';
 
 interface Props {
   onBack: () => void;
@@ -40,11 +41,11 @@ export default function CalendarView({ onBack }: Props) {
   );
 
   function colorFor(count: number) {
-    if (count === 0) return 'bg-zinc-800';
+    if (count === 0) return 'bg-bg-2';
     const intensity = count / maxInDay;
     if (intensity <= 0.33) return 'bg-emerald-900';
-    if (intensity <= 0.66) return 'bg-emerald-700';
-    return 'bg-emerald-500';
+    if (intensity <= 0.66) return 'bg-accent';
+    return 'bg-accent-hover';
   }
 
   function tooltipFor(dateKey: string) {
@@ -59,28 +60,29 @@ export default function CalendarView({ onBack }: Props) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
+    <SubScreen title="CalendarioVisualizador" onBack={onBack}>
+      <div className="max-w-2xl mx-auto p-4 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">📅 Calendário</h1>
         <button
           onClick={onBack}
-          className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg"
+          className="bg-bg-2 hover:bg-zinc-700 px-4 py-2 rounded-lg"
         >
           Voltar
         </button>
       </div>
 
       {/* Navegação por ano */}
-      <div className="flex items-center justify-between bg-zinc-900 rounded-2xl p-3">
+      <div className="flex items-center justify-between bg-bg-1 rounded-2xl p-3">
         <button
           onClick={() => setYear((y) => y - 1)}
-          className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-lg text-sm"
+          className="bg-bg-2 hover:bg-zinc-700 px-3 py-1 rounded-lg text-sm"
         >
           ←
         </button>
         <div className="text-center">
           <div className="text-lg font-bold">{year}</div>
-          <div className="text-xs text-zinc-400">
+          <div className="text-xs text-text-2">
             {totalThisYear} dia{totalThisYear !== 1 ? 's' : ''} treinado
             {totalThisYear !== 1 ? 's' : ''}
           </div>
@@ -88,21 +90,21 @@ export default function CalendarView({ onBack }: Props) {
         <button
           onClick={() => setYear((y) => y + 1)}
           disabled={year >= new Date().getFullYear()}
-          className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 px-3 py-1 rounded-lg text-sm"
+          className="bg-bg-2 hover:bg-zinc-700 disabled:opacity-40 px-3 py-1 rounded-lg text-sm"
         >
           →
         </button>
       </div>
 
       {/* Calendário */}
-      <div className="bg-zinc-900 rounded-2xl p-4 overflow-x-auto">
+      <div className="bg-bg-1 rounded-2xl p-4 overflow-x-auto">
         <div className="inline-block min-w-full">
           {/* Rótulos de mês */}
           <div className="flex gap-1 pl-8 mb-1">
             {monthLabels.map((m, i) => (
               <div
                 key={i}
-                className="text-[9px] text-zinc-500"
+                className="text-[9px] text-text-3"
                 style={{ width: `${m.cols * 14}px` }}
               >
                 {m.label}
@@ -117,7 +119,7 @@ export default function CalendarView({ onBack }: Props) {
               {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
                 <div
                   key={i}
-                  className="w-3 h-3 text-[8px] text-zinc-500 flex items-center justify-center"
+                  className="w-3 h-3 text-[8px] text-text-3 flex items-center justify-center"
                 >
                   {i % 2 === 1 ? d : ''}
                 </div>
@@ -144,7 +146,7 @@ export default function CalendarView({ onBack }: Props) {
                       key={di}
                       title={tooltipFor(key)}
                       className={`w-3 h-3 rounded-sm ${
-                        isFuture ? 'bg-zinc-800/50' : colorFor(count)
+                        isFuture ? 'bg-bg-2/50' : colorFor(count)
                       }`}
                     />
                   );
@@ -156,16 +158,18 @@ export default function CalendarView({ onBack }: Props) {
       </div>
 
       {/* Legenda */}
-      <div className="flex items-center justify-end gap-2 text-xs text-zinc-500">
+      <div className="flex items-center justify-end gap-2 text-xs text-text-3">
         <span>menos</span>
-        <div className="w-3 h-3 rounded-sm bg-zinc-800" />
+        <div className="w-3 h-3 rounded-sm bg-bg-2" />
         <div className="w-3 h-3 rounded-sm bg-emerald-900" />
-        <div className="w-3 h-3 rounded-sm bg-emerald-700" />
-        <div className="w-3 h-3 rounded-sm bg-emerald-500" />
+        <div className="w-3 h-3 rounded-sm bg-accent" />
+        <div className="w-3 h-3 rounded-sm bg-accent-hover" />
         <span>mais</span>
       </div>
     </div>
+    </SubScreen>
   );
+
 }
 
 /* ============================================================

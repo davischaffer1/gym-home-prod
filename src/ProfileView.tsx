@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { getProfile, saveProfile, type Profile } from './db';
+import { SubScreen } from './ui';
 
 interface Props {
   onBack: () => void;
 }
+
+
 
 export default function ProfileView({ onBack }: Props) {
   const [form, setForm] = useState<Omit<Profile, 'id' | 'updatedAt'>>({
@@ -32,21 +35,22 @@ export default function ProfileView({ onBack }: Props) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
+    <SubScreen title="PerfilVisualizador" onBack={onBack}>
+      <div className="max-w-2xl mx-auto p-4 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">👤 Perfil</h1>
         <button
           onClick={onBack}
-          className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg"
+          className="bg-bg-2 hover:bg-zinc-700 px-4 py-2 rounded-lg"
         >
           Voltar
         </button>
       </div>
 
-      <section className="bg-zinc-900 rounded-2xl p-4 space-y-4">
+      <section className="bg-bg-1 rounded-2xl p-4 space-y-4">
         <Field label="Nome">
           <input
-            className="w-full bg-zinc-800 rounded-lg px-3 py-2 outline-none"
+            className="w-full bg-bg-2 rounded-lg px-3 py-2 outline-none"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Como quer ser chamado"
@@ -56,7 +60,7 @@ export default function ProfileView({ onBack }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <Field label="Peso (kg)">
             <input
-              className="w-full bg-zinc-800 rounded-lg px-3 py-2 outline-none"
+              className="w-full bg-bg-2 rounded-lg px-3 py-2 outline-none"
               inputMode="decimal"
               value={form.weightKg}
               onChange={(e) =>
@@ -66,7 +70,7 @@ export default function ProfileView({ onBack }: Props) {
           </Field>
           <Field label="Altura (cm)">
             <input
-              className="w-full bg-zinc-800 rounded-lg px-3 py-2 outline-none"
+              className="w-full bg-bg-2 rounded-lg px-3 py-2 outline-none"
               inputMode="numeric"
               value={form.heightCm}
               onChange={(e) =>
@@ -78,7 +82,7 @@ export default function ProfileView({ onBack }: Props) {
 
         <Field label="Descanso padrão (segundos)">
           <input
-            className="w-full bg-zinc-800 rounded-lg px-3 py-2 outline-none"
+            className="w-full bg-bg-2 rounded-lg px-3 py-2 outline-none"
             inputMode="numeric"
             value={form.restSeconds}
             onChange={(e) =>
@@ -90,7 +94,7 @@ export default function ProfileView({ onBack }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <Field label="Idade">
             <input
-              className="w-full bg-zinc-800 rounded-lg px-3 py-2 outline-none"
+              className="w-full bg-bg-2 rounded-lg px-3 py-2 outline-none"
               inputMode="numeric"
               value={form.age}
               onChange={(e) =>
@@ -104,8 +108,8 @@ export default function ProfileView({ onBack }: Props) {
                 onClick={() => setForm({ ...form, sex: 'M' })}
                 className={`flex-1 py-2 rounded-lg ${
                   form.sex === 'M'
-                    ? 'bg-emerald-600'
-                    : 'bg-zinc-800 hover:bg-zinc-700'
+                    ? 'bg-accent'
+                    : 'bg-bg-2 hover:bg-zinc-700'
                 }`}
               >
                 Masculino
@@ -114,8 +118,8 @@ export default function ProfileView({ onBack }: Props) {
                 onClick={() => setForm({ ...form, sex: 'F' })}
                 className={`flex-1 py-2 rounded-lg ${
                   form.sex === 'F'
-                    ? 'bg-emerald-600'
-                    : 'bg-zinc-800 hover:bg-zinc-700'
+                    ? 'bg-accent'
+                    : 'bg-bg-2 hover:bg-zinc-700'
                 }`}
               >
                 Feminino
@@ -126,12 +130,13 @@ export default function ProfileView({ onBack }: Props) {
 
         <button
           onClick={handleSave}
-          className="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-lg font-semibold"
+          className="w-full bg-accent hover:bg-accent-hover py-3 rounded-lg font-semibold"
         >
           {saved ? '✅ Salvo!' : 'Salvar perfil'}
         </button>
       </section>
     </div>
+    </SubScreen>
   );
 }
 
@@ -144,7 +149,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs text-zinc-400 mb-1">{label}</label>
+      <label className="block text-xs text-text-2 mb-1">{label}</label>
       {children}
     </div>
   );
