@@ -580,7 +580,7 @@ export function ListItem({
     name,
     active,
   }: {
-    name: 'home' | 'chart' | 'plus' | 'calendar' | 'user';
+    name: 'home' | 'chart' | 'plus' | 'calendar' | 'user' | 'trend';
     active?: boolean;
   }) {
     const size = 24;
@@ -660,6 +660,24 @@ export function ListItem({
         </svg>
       );
     }
+
+    if (name === 'trend') {
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="3 17 9 11 13 15 21 7" />
+          <polyline points="14 7 21 7 21 14" />
+        </svg>
+      );
+    }
   
     // user
     return (
@@ -690,7 +708,7 @@ export function ListItem({
     tabs: {
       id: string;
       label: string;
-      icon: 'home' | 'chart' | 'plus' | 'calendar' | 'user';
+      icon: 'home' | 'chart' | 'plus' | 'calendar' | 'user' | 'trend';
     }[];
     activeTab: string;
     onChange: (id: string) => void;

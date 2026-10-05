@@ -9,6 +9,7 @@ import ExercisePicker from './ExercisePicker';
 import AchievementsView from './AchievementsView';
 import CalendarView from './CalendarView';
 import ExerciseProgressView from './ExerciseProgressView';
+import { useSwipe } from './useSwipe';
 import {
   AppShell,
   BottomNav,
@@ -17,14 +18,11 @@ import {
   SectionTitle,
   Card,
 } from './ui';
-import { useSwipe } from './useSwipe';
 
-type SubView =
-  | null
-  | 'history'
-  | 'progress'
-  | 'exercise'
-  | 'achievements';
+type Tab = 'home' | 'stats' | 'evolution' | 'agenda' | 'profile' | 'new';
+type SubView = null | 'history' | 'progress' | 'achievements';
+
+const TABS: Tab[] = ['home', 'stats', 'evolution', 'agenda', 'profile'];
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('home');
@@ -36,7 +34,6 @@ export default function App() {
   const [workoutName, setWorkoutName] = useState('');
   const [exerciseName, setExerciseName] = useState('');
 
-  // Edição de treino
   const [editingWorkoutId, setEditingWorkoutId] = useState<number | null>(null);
   const [editingWorkoutName, setEditingWorkoutName] = useState('');
 
@@ -55,11 +52,11 @@ export default function App() {
 
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
 
-  const TABS: Tab[] = ['home', 'stats', 'new', 'agenda', 'profile'];
-  const currentIdx = TABS.indexOf(tab);
+  // ───── Swipe entre abas ─────
+  const currentIdx = TABS.indexOf(tab === 'new' ? 'home' : tab);
 
   useSwipe({
-    enabled: !inSession && !subView,
+    enabled: !inSession && !subView && tab !== 'new',
     onSwipeLeft: () => {
       if (currentIdx < TABS.length - 1) setTab(TABS[currentIdx + 1]);
     },
@@ -195,8 +192,8 @@ export default function App() {
   // ══════════════ SUB-TELAS ══════════════
   if (subView === 'history') return <HistoryView onBack={() => setSubView(null)} />;
   if (subView === 'progress') return <DashboardView onBack={() => setSubView(null)} />;
-  if (subView === 'exercise') return <ExerciseProgressView onBack={() => setSubView(null)} />;
-  if (subView === 'achievements') return <AchievementsView onBack={() => setSubView(null)} />;
+  if (subView === 'achievements')
+    return <AchievementsView onBack={() => setSubView(null)} />;
 
   // ══════════════ BOTTOM NAV ══════════════
   const bottomNav = (
@@ -206,7 +203,7 @@ export default function App() {
       tabs={[
         { id: 'home', label: 'Início', icon: 'home' },
         { id: 'stats', label: 'Stats', icon: 'chart' },
-        { id: 'new', label: 'Novo', icon: 'plus' },
+        { id: 'evolution', label: 'Evolução', icon: 'trend' },
         { id: 'agenda', label: 'Agenda', icon: 'calendar' },
         { id: 'profile', label: 'Perfil', icon: 'user' },
       ]}
@@ -216,215 +213,220 @@ export default function App() {
   // ══════════════ TAB: HOME ══════════════
   if (tab === 'home') {
     return (
-      <AppShell
-        title={profile?.name ? `Olá, ${profile.name}` : 'Meu Treino'}
-        subtitle={new Date().toLocaleDateString('pt-BR', {
-          weekday: 'long',
-          day: '2-digit',
-          month: 'long',
-        })}
-        headerAction={
-          <button
-            onClick={() => setSubView('achievements')}
-            className="w-10 h-10 rounded-xl bg-bg-1 border border-white/[0.06] flex items-center justify-center text-lg active:scale-95 transition-all"
-          >
-            🏅
-          </button>
-        }
-        animationKey={tab}
-        bottomNav={bottomNav}
-      >
-        {/* Atalhos */}
-        <div className="grid grid-cols-2 gap-2 mb-5">
-          <Card interactive onClick={() => setSubView('progress')} className="!p-3.5">
-            <span className="text-xl">📊</span>
-            <div className="text-sm font-semibold text-text-0 mt-1">Progresso</div>
-            <div className="text-[10px] text-text-3">Estatísticas</div>
-          </Card>
-          <Card interactive onClick={() => setSubView('history')} className="!p-3.5">
-            <span className="text-xl">📜</span>
-            <div className="text-sm font-semibold text-text-0 mt-1">Histórico</div>
-            <div className="text-[10px] text-text-3">Treinos passados</div>
-          </Card>
-        </div>
-
-        {/* Meus treinos */}
-        <SectionTitle
-          action={
+      <>
+        <AppShell
+          title={profile?.name ? `Olá, ${profile.name}` : 'Meu Treino'}
+          subtitle={new Date().toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+          })}
+          headerAction={
             <button
-              onClick={() => setTab('new')}
-              className="text-xs text-accent font-medium"
+              onClick={() => setSubView('achievements')}
+              className="w-10 h-10 rounded-xl bg-bg-1 border border-white/[0.06] flex items-center justify-center text-lg active:scale-95 transition-all"
             >
-              + Novo
+              🏅
             </button>
           }
+          bottomNav={bottomNav}
         >
-          Meus treinos
-        </SectionTitle>
+          {/* Atalhos */}
+          <div className="grid grid-cols-2 gap-2 mb-5">
+            <Card interactive onClick={() => setTab('stats')} className="!p-3.5">
+              <span className="text-xl">📊</span>
+              <div className="text-sm font-semibold text-text-0 mt-1">Stats</div>
+              <div className="text-[10px] text-text-3">Estatísticas gerais</div>
+            </Card>
+            <Card interactive onClick={() => setSubView('history')} className="!p-3.5">
+              <span className="text-xl">📜</span>
+              <div className="text-sm font-semibold text-text-0 mt-1">Histórico</div>
+              <div className="text-[10px] text-text-3">Treinos passados</div>
+            </Card>
+          </div>
 
-        {workouts?.length === 0 && (
-          <Card variant="subtle">
-            <p className="text-text-3 text-sm text-center py-8">
-              Nenhum treino ainda
-            </p>
-          </Card>
-        )}
-
-        <div className="space-y-2">
-          {workouts?.map((w) => {
-            const isSelected = selectedWorkout === w.id;
-            const isEditing = editingWorkoutId === w.id;
-
-            // ── MODO EDIÇÃO ──
-            if (isEditing) {
-              return (
-                <Card key={w.id} variant="accent">
-                  <div className="flex gap-2">
-                    <Input
-                      value={editingWorkoutName}
-                      onChange={setEditingWorkoutName}
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveWorkoutName(w.id!);
-                        if (e.key === 'Escape') setEditingWorkoutId(null);
-                      }}
-                    />
-                    <Button
-                      onClick={() => saveWorkoutName(w.id!)}
-                      className="flex-shrink-0"
-                    >
-                      ✓
-                    </Button>
-                  </div>
-                </Card>
-              );
-            }
-
-            // ── MODO NORMAL ──
-            return (
-              <Card
-                key={w.id}
-                variant={isSelected ? 'accent' : 'default'}
-                className="!p-0 overflow-hidden"
+          {/* Meus treinos */}
+          <SectionTitle
+            action={
+              <button
+                onClick={() => setTab('new')}
+                className="text-xs text-accent font-medium"
               >
-                <button
-                  onClick={() => setSelectedWorkout(isSelected ? null : w.id!)}
-                  className="w-full text-left px-4 py-3.5 flex items-center justify-between active:scale-[0.99] transition-transform"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-text-0 truncate">
-                      {w.name}
-                    </div>
-                    <div className="text-[11px] text-text-3 mt-0.5">
-                      {isSelected
-                        ? `${exercises?.length ?? 0} exercícios`
-                        : 'Toque para abrir'}
-                    </div>
-                  </div>
-                  <span className="text-text-3 text-lg">
-                    {isSelected ? '▾' : '›'}
-                  </span>
-                </button>
+                + Novo
+              </button>
+            }
+          >
+            Meus treinos
+          </SectionTitle>
 
-                {isSelected && (
-                  <div className="px-4 pb-3 space-y-3 animate-fade-in">
-                    {/* Ações do treino */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setEditingWorkoutId(w.id!);
-                          setEditingWorkoutName(w.name);
-                        }}
-                      >
-                        ✏️ Editar
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => duplicateWorkout(w.id!)}
-                      >
-                        📋 Duplicar
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => deleteWorkout(w.id!)}
-                      >
-                        🗑 Apagar
-                      </Button>
-                    </div>
+          {workouts?.length === 0 && (
+            <Card variant="subtle">
+              <p className="text-text-3 text-sm text-center py-8">
+                Nenhum treino ainda
+              </p>
+            </Card>
+          )}
 
-                    {/* Adicionar exercício manual */}
+          <div className="space-y-2">
+            {workouts?.map((w) => {
+              const isSelected = selectedWorkout === w.id;
+              const isEditing = editingWorkoutId === w.id;
+
+              if (isEditing) {
+                return (
+                  <Card key={w.id} variant="accent">
                     <div className="flex gap-2">
                       <Input
-                        value={exerciseName}
-                        onChange={setExerciseName}
-                        placeholder="Adicionar exercício..."
-                        onKeyDown={(e) => e.key === 'Enter' && addExercise()}
+                        value={editingWorkoutName}
+                        onChange={setEditingWorkoutName}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveWorkoutName(w.id!);
+                          if (e.key === 'Escape') setEditingWorkoutId(null);
+                        }}
                       />
                       <Button
-                        variant="secondary"
-                        onClick={addExercise}
-                        disabled={!exerciseName.trim()}
+                        onClick={() => saveWorkoutName(w.id!)}
                         className="flex-shrink-0"
                       >
-                        +
+                        ✓
                       </Button>
                     </div>
+                  </Card>
+                );
+              }
 
-                    {/* Lista de exercícios */}
-                    {exercises?.length === 0 && (
-                      <p className="text-text-3 text-xs text-center py-3">
-                        Nenhum exercício ainda
-                      </p>
-                    )}
-                    <div className="space-y-2">
-                      {exercises?.map((ex, idx) => (
-                        <ExerciseItem
-                          key={ex.id}
-                          ex={ex}
-                          isFirst={idx === 0}
-                          isLast={idx === exercises.length - 1}
-                          onRemove={() => removeExercise(ex.id!)}
-                          onMoveUp={() => moveExerciseUp(ex.id!)}
-                          onMoveDown={() => moveExerciseDown(ex.id!)}
+              return (
+                <Card
+                  key={w.id}
+                  variant={isSelected ? 'accent' : 'default'}
+                  className="!p-0 overflow-hidden"
+                >
+                  <button
+                    onClick={() => setSelectedWorkout(isSelected ? null : w.id!)}
+                    className="w-full text-left px-4 py-3.5 flex items-center justify-between active:scale-[0.99] transition-transform"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-text-0 truncate">
+                        {w.name}
+                      </div>
+                      <div className="text-[11px] text-text-3 mt-0.5">
+                        {isSelected
+                          ? `${exercises?.length ?? 0} exercícios`
+                          : 'Toque para abrir'}
+                      </div>
+                    </div>
+                    <span className="text-text-3 text-lg">
+                      {isSelected ? '▾' : '›'}
+                    </span>
+                  </button>
+
+                  {isSelected && (
+                    <div className="px-4 pb-3 space-y-3 animate-fade-in">
+                      <div className="grid grid-cols-3 gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setEditingWorkoutId(w.id!);
+                            setEditingWorkoutName(w.name);
+                          }}
+                        >
+                          ✏️ Editar
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => duplicateWorkout(w.id!)}
+                        >
+                          📋 Duplicar
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => deleteWorkout(w.id!)}
+                        >
+                          🗑 Apagar
+                        </Button>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Input
+                          value={exerciseName}
+                          onChange={setExerciseName}
+                          placeholder="Adicionar exercício..."
+                          onKeyDown={(e) => e.key === 'Enter' && addExercise()}
                         />
-                      ))}
-                    </div>
+                        <Button
+                          variant="secondary"
+                          onClick={addExercise}
+                          disabled={!exerciseName.trim()}
+                          className="flex-shrink-0"
+                        >
+                          +
+                        </Button>
+                      </div>
 
-                    {/* Botões principais */}
-                    <div className="flex gap-2 pt-1">
-                      <Button
-                        variant="secondary"
-                        onClick={() => setPickerOpen(true)}
-                        className="flex-1"
-                      >
-                        📚 Biblioteca
-                      </Button>
-                      <Button
-                        onClick={() => setInSession(true)}
-                        disabled={!exercises || exercises.length === 0}
-                        className="flex-1"
-                      >
-                        ▶ Iniciar
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </Card>
-            );
-          })}
-        </div>
+                      {exercises?.length === 0 && (
+                        <p className="text-text-3 text-xs text-center py-3">
+                          Nenhum exercício ainda
+                        </p>
+                      )}
+                      <div className="space-y-2">
+                        {exercises?.map((ex, idx) => (
+                          <ExerciseItem
+                            key={ex.id}
+                            ex={ex}
+                            isFirst={idx === 0}
+                            isLast={idx === exercises.length - 1}
+                            onRemove={() => removeExercise(ex.id!)}
+                            onMoveUp={() => moveExerciseUp(ex.id!)}
+                            onMoveDown={() => moveExerciseDown(ex.id!)}
+                          />
+                        ))}
+                      </div>
 
-        {pickerOpen && (
-          <ExercisePicker
-            onAdd={addExerciseFromLibrary}
-            onClose={() => setPickerOpen(false)}
-          />
-        )}
-      </AppShell>
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          variant="secondary"
+                          onClick={() => setPickerOpen(true)}
+                          className="flex-1"
+                        >
+                          📚 Biblioteca
+                        </Button>
+                        <Button
+                          onClick={() => setInSession(true)}
+                          disabled={!exercises || exercises.length === 0}
+                          className="flex-1"
+                        >
+                          ▶ Iniciar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+
+          {pickerOpen && (
+            <ExercisePicker
+              onAdd={addExerciseFromLibrary}
+              onClose={() => setPickerOpen(false)}
+            />
+          )}
+        </AppShell>
+
+        {/* FAB — Novo treino */}
+        <button
+          onClick={() => setTab('new')}
+          aria-label="Novo treino"
+          className="fixed z-40 right-4 w-14 h-14 rounded-full bg-accent text-black flex items-center justify-center shadow-[0_8px_24px_rgba(34,211,168,0.4)] active:scale-90 transition-transform"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 5.5rem)' }}
+        >
+          <span className="text-2xl font-bold">+</span>
+        </button>
+      </>
     );
   }
 
@@ -433,10 +435,15 @@ export default function App() {
     return <DashboardView onBack={() => setTab('home')} />;
   }
 
+  // ══════════════ TAB: EVOLUÇÃO ══════════════
+  if (tab === 'evolution') {
+    return <ExerciseProgressView onBack={() => setTab('home')} />;
+  }
+
   // ══════════════ TAB: NOVO ══════════════
   if (tab === 'new') {
     return (
-      <AppShell title="Novo treino" bottomNav={bottomNav} animationKey={tab} >
+      <AppShell title="Novo treino" bottomNav={bottomNav}>
         <Card className="space-y-3">
           <label className="text-xs text-text-3 uppercase tracking-wider font-semibold">
             Nome do treino
@@ -477,6 +484,12 @@ export default function App() {
             ))}
           </div>
         </div>
+
+        <div className="mt-6">
+          <Button variant="secondary" fullWidth onClick={() => setTab('home')}>
+            ← Voltar
+          </Button>
+        </div>
       </AppShell>
     );
   }
@@ -494,7 +507,7 @@ export default function App() {
   return null;
 }
 
-/* ══════════════ COMPONENTES ══════════════ */
+/* ══════════════ COMPONENTES LOCAIS ══════════════ */
 
 function ExerciseItem({
   ex,
@@ -523,7 +536,6 @@ function ExerciseItem({
 }) {
   return (
     <div className="bg-bg-2 rounded-2xl p-3 space-y-2.5 border border-white/[0.04]">
-      {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <div className="flex flex-col gap-0.5 flex-shrink-0">
@@ -559,7 +571,6 @@ function ExerciseItem({
         </button>
       </div>
 
-      {/* Range de reps + RIR */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[10px] text-text-3">🎯</span>
         <input
@@ -616,7 +627,6 @@ function ExerciseItem({
         )}
       </div>
 
-      {/* Nota */}
       <input
         className="w-full bg-bg-3 rounded-lg px-2.5 py-1.5 outline-none text-[11px] border border-white/[0.04] focus:border-accent/40 text-text-1"
         placeholder="📝 Nota permanente"

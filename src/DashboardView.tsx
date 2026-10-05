@@ -21,9 +21,10 @@ import { SubScreen } from './ui';
 
 interface Props {
   onBack: () => void;
+  onNavigateToEvolution?: () => void;
 }
 
-export default function DashboardView({ onBack }: Props) {
+export default function DashboardView({ onBack, onNavigateToEvolution }: Props) {
   // 🔝 TODOS os hooks aqui em cima, sem return no meio
 
   const sessions = useLiveQuery(async () => {
@@ -183,6 +184,26 @@ export default function DashboardView({ onBack }: Props) {
       <div className="max-w-lg mx-auto px-4 pt-4 pb-12 space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
+          {/* Atalho para Evolução */}
+{onNavigateToEvolution && (
+  <button
+    onClick={onNavigateToEvolution}
+    className="w-full bg-bg-1 border border-white/[0.06] hover:bg-bg-2 active:scale-[0.98] transition-all rounded-2xl px-4 py-3.5 flex items-center justify-between mb-4"
+  >
+    <div className="flex items-center gap-3">
+      <span className="text-xl">📈</span>
+      <div className="text-left">
+        <div className="text-sm font-semibold text-text-0">
+          Evolução por exercício
+        </div>
+        <div className="text-[11px] text-text-3">
+          Carga, 1RM e previsão de PR
+        </div>
+      </div>
+    </div>
+    <span className="text-text-3">›</span>
+  </button>
+)}
           <h1 className="text-2xl font-bold tracking-tight">
             📊 Progresso
           </h1>
