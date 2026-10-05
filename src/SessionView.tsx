@@ -20,6 +20,7 @@ import {
   detectLatentPR,
   classifyFiberActivation,
 } from './trainingScience';
+import SwipeableExerciseView from './SwipeableExerciseView';
 
 interface Props {
   workoutId: number;
@@ -33,6 +34,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   const [restSeconds, setRestSeconds] = useState<number | null>(null);
   const [showNotes, setShowNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
 
   // Cria a sessão + registra notificação
   useEffect(() => {
@@ -220,21 +222,78 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
         )}
 
         {/* Navegação entre exercícios */}
-        <ExerciseNav exercises={exercises} sessionId={sessionId} />
+        {/* Indicador de exercício atual */}
+<div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-bg-0/85 backdrop-blur-xl border-b border-white/[0.05]">
+  <div className="flex items-center justify-between">
+    {/* Seta anterior */}
+    <button
+      onClick={() =>
+        setCurrentExerciseIndex((i) => Math.max(0, i - 1))
+      }
+      disabled={currentExerciseIndex === 0}
+      className="w-8 h-8 rounded-lg hover:bg-white/[0.05] disabled:opacity-30 active:scale-90 transition-all flex items-center justify-center text-text-2"
+    >
+      ←
+    </button>
+
+    {/* Nome + contador */}
+    <div className="text-center flex-1 min-w-0">
+      <div className="text-sm font-semibold text-text-0 truncate">
+        {exercises[currentExerciseIndex]?.name}
+      </div>
+      <div className="text-[10px] text-text-3 mt-0.5">
+        {currentExerciseIndex + 1} de {exercises.length}
+      </div>
+    </div>
+
+    {/* Seta próxima */}
+    <button
+      onClick={() =>
+        setCurrentExerciseIndex((i) =>
+          Math.min(exercises.length - 1, i + 1)
+        )
+      }
+      disabled={currentExerciseIndex === exercises.length - 1}
+      className="w-8 h-8 rounded-lg hover:bg-white/[0.05] disabled:opacity-30 active:scale-90 transition-all flex items-center justify-center text-text-2"
+    >
+      →
+    </button>
+  </div>
+
+  {/* Barra de progresso */}
+  <div className="flex gap-1 mt-2 px-1">
+    {exercises.map((_, idx) => (
+      <div
+        key={idx}
+        className={`flex-1 h-0.5 rounded-full transition-all duration-300 ${
+          idx === currentExerciseIndex
+            ? 'bg-accent'
+            : idx < currentExerciseIndex
+            ? 'bg-accent/40'
+            : 'bg-white/[0.08]'
+        }`}
+      />
+    ))}
+  </div>
+</div>
 
         {/* Cards de exercício */}
-        <div className="space-y-4">
-          {exercises.map((ex) => (
-            <div key={ex.id} id={`ex-${ex.id}`}>
-              <ExerciseCard
-                exercise={ex}
-                sessionId={sessionId}
-                defaultRest={profile?.restSeconds ?? 90}
-                onSetAdded={(sec) => setRestSeconds(sec)}
-              />
-            </div>
-          ))}
-        </div>
+        {/* Carrossel: 1 exercício por vez */}
+<SwipeableExerciseView
+  exercises={exercises}
+  activeIndex={currentExerciseIndex}
+  onIndexChange={setCurrentExerciseIndex}
+>
+  {(ex, idx) => (
+    <ExerciseCard
+      exercise={ex}
+      sessionId={sessionId}
+      defaultRest={profile?.restSeconds ?? 90}
+      onSetAdded={(sec) => setRestSeconds(sec)}
+      isActive={idx === currentExerciseIndex}
+    />
+  )}
+</SwipeableExerciseView>
 
         {/* Finalizar */}
         <button

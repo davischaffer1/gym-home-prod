@@ -11,23 +11,20 @@ import CalendarView from './CalendarView';
 import ExerciseProgressView from './ExerciseProgressView';
 import {
   AppShell,
-  SubScreen,
   BottomNav,
   Button,
   Input,
   SectionTitle,
   Card,
-  Badge,
 } from './ui';
+import { useSwipe } from './useSwipe';
 
-type Tab = 'home' | 'stats' | 'new' | 'agenda' | 'profile';
 type SubView =
   | null
   | 'history'
   | 'progress'
   | 'exercise'
-  | 'achievements'
-  | 'edit-profile';
+  | 'achievements';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('home');
@@ -38,6 +35,10 @@ export default function App() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [workoutName, setWorkoutName] = useState('');
   const [exerciseName, setExerciseName] = useState('');
+
+  // Edição de treino
+  const [editingWorkoutId, setEditingWorkoutId] = useState<number | null>(null);
+  const [editingWorkoutName, setEditingWorkoutName] = useState('');
 
   const workouts = useLiveQuery(async () => {
     const all = await db.workouts.toArray();
@@ -54,7 +55,21 @@ export default function App() {
 
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
 
-  // ───── Ações ─────
+  const TABS: Tab[] = ['home', 'stats', 'new', 'agenda', 'profile'];
+  const currentIdx = TABS.indexOf(tab);
+
+  useSwipe({
+    enabled: !inSession && !subView,
+    onSwipeLeft: () => {
+      if (currentIdx < TABS.length - 1) setTab(TABS[currentIdx + 1]);
+    },
+    onSwipeRight: () => {
+      if (currentIdx > 0) setTab(TABS[currentIdx - 1]);
+    },
+  });
+
+  // ══════════════ AÇÕES ══════════════
+
   async function createWorkout() {
     if (!workoutName.trim()) return;
     const id = await db.workouts.add({
@@ -64,6 +79,55 @@ export default function App() {
     setWorkoutName('');
     setSelectedWorkout(id);
     setTab('home');
+  }
+
+  async function saveWorkoutName(id: number) {
+    if (!editingWorkoutName.trim()) {
+      setEditingWorkoutId(null);
+      return;
+    }
+    await db.workouts.update(id, { name: editingWorkoutName.trim() });
+    setEditingWorkoutId(null);
+    setEditingWorkoutName('');
+  }
+
+  async function deleteWorkout(id: number) {
+    if (!confirm('Apagar esse treino e seus exercícios?')) return;
+    await db.exercises.where('workoutId').equals(id).delete();
+    await db.workouts.delete(id);
+    if (selectedWorkout === id) setSelectedWorkout(null);
+  }
+
+  async function duplicateWorkout(id: number) {
+    const original = await db.workouts.get(id);
+    if (!original) return;
+
+    const originalExercises = await db.exercises
+      .where('workoutId')
+      .equals(id)
+      .sortBy('order');
+
+    const newWorkoutId = await db.workouts.add({
+      name: `${original.name} (cópia)`,
+      createdAt: Date.now(),
+    });
+
+    for (const ex of originalExercises) {
+      await db.exercises.add({
+        workoutId: newWorkoutId,
+        name: ex.name,
+        order: ex.order,
+        targetRepsMin: ex.targetRepsMin,
+        targetRepsMax: ex.targetRepsMax,
+        targetSets: ex.targetSets,
+        note: ex.note,
+        primaryGroup: ex.primaryGroup,
+        equipment: ex.equipment,
+        targetRIR: ex.targetRIR,
+        useRIR: ex.useRIR,
+      });
+    }
+    setSelectedWorkout(newWorkoutId);
   }
 
   async function addExercise() {
@@ -89,11 +153,31 @@ export default function App() {
   }
 
   async function removeExercise(id: number) {
-    if (!confirm('Remover esse exercício?')) return;
+    if (!confirm('Remover esse exercício do treino?')) return;
     await db.exercises.delete(id);
   }
 
-  // ───── Sessão em tela cheia ─────
+  async function moveExerciseUp(exerciseId: number) {
+    if (!exercises) return;
+    const idx = exercises.findIndex((e) => e.id === exerciseId);
+    if (idx <= 0) return;
+    const prev = exercises[idx - 1];
+    const current = exercises[idx];
+    await db.exercises.update(current.id!, { order: prev.order });
+    await db.exercises.update(prev.id!, { order: current.order });
+  }
+
+  async function moveExerciseDown(exerciseId: number) {
+    if (!exercises) return;
+    const idx = exercises.findIndex((e) => e.id === exerciseId);
+    if (idx === -1 || idx >= exercises.length - 1) return;
+    const next = exercises[idx + 1];
+    const current = exercises[idx];
+    await db.exercises.update(current.id!, { order: next.order });
+    await db.exercises.update(next.id!, { order: current.order });
+  }
+
+  // ══════════════ TELA CHEIA (SESSÃO) ══════════════
   if (inSession && selectedWorkout) {
     return (
       <SessionView
@@ -108,42 +192,28 @@ export default function App() {
     );
   }
 
-  // ───── Sub-telas (empilhadas) ─────
-  if (subView === 'history') {
-    return <HistoryView onBack={() => setSubView(null)} />;
-  }
-  if (subView === 'progress') {
-    return <DashboardView onBack={() => setSubView(null)} />;
-  }
-  if (subView === 'exercise') {
-    return <ExerciseProgressView onBack={() => setSubView(null)} />;
-  }
-  if (subView === 'achievements') {
-    return <AchievementsView onBack={() => setSubView(null)} />;
-  }
-  if (subView === 'edit-profile') {
-    return <ProfileView onBack={() => setSubView(null)} />;
-  }
+  // ══════════════ SUB-TELAS ══════════════
+  if (subView === 'history') return <HistoryView onBack={() => setSubView(null)} />;
+  if (subView === 'progress') return <DashboardView onBack={() => setSubView(null)} />;
+  if (subView === 'exercise') return <ExerciseProgressView onBack={() => setSubView(null)} />;
+  if (subView === 'achievements') return <AchievementsView onBack={() => setSubView(null)} />;
 
-  // ───── Bottom nav config ─────
+  // ══════════════ BOTTOM NAV ══════════════
   const bottomNav = (
     <BottomNav
       activeTab={tab}
-      onChange={(id) => {
-        setTab(id as Tab);
-        if (id === 'agenda') setSubView(null);
-      }}
+      onChange={(id) => setTab(id as Tab)}
       tabs={[
-        { id: 'home', label: 'Início', icon: '🏠' },
-        { id: 'stats', label: 'Stats', icon: '📊' },
-        { id: 'new', label: 'Novo', icon: '➕' },
-        { id: 'agenda', label: 'Agenda', icon: '📅' },
-        { id: 'profile', label: 'Perfil', icon: '👤' },
+        { id: 'home', label: 'Início', icon: 'home' },
+        { id: 'stats', label: 'Stats', icon: 'chart' },
+        { id: 'new', label: 'Novo', icon: 'plus' },
+        { id: 'agenda', label: 'Agenda', icon: 'calendar' },
+        { id: 'profile', label: 'Perfil', icon: 'user' },
       ]}
     />
   );
 
-  // ───── TAB: INÍCIO ─────
+  // ══════════════ TAB: HOME ══════════════
   if (tab === 'home') {
     return (
       <AppShell
@@ -161,27 +231,20 @@ export default function App() {
             🏅
           </button>
         }
+        animationKey={tab}
         bottomNav={bottomNav}
       >
         {/* Atalhos */}
         <div className="grid grid-cols-2 gap-2 mb-5">
-          <Card
-            interactive
-            onClick={() => setSubView('progress')}
-            className="!p-3.5 flex flex-col gap-1"
-          >
+          <Card interactive onClick={() => setSubView('progress')} className="!p-3.5">
             <span className="text-xl">📊</span>
-            <span className="text-sm font-semibold text-text-0">Progresso</span>
-            <span className="text-[10px] text-text-3">Ver estatísticas</span>
+            <div className="text-sm font-semibold text-text-0 mt-1">Progresso</div>
+            <div className="text-[10px] text-text-3">Estatísticas</div>
           </Card>
-          <Card
-            interactive
-            onClick={() => setSubView('history')}
-            className="!p-3.5 flex flex-col gap-1"
-          >
+          <Card interactive onClick={() => setSubView('history')} className="!p-3.5">
             <span className="text-xl">📜</span>
-            <span className="text-sm font-semibold text-text-0">Histórico</span>
-            <span className="text-[10px] text-text-3">Treinos passados</span>
+            <div className="text-sm font-semibold text-text-0 mt-1">Histórico</div>
+            <div className="text-[10px] text-text-3">Treinos passados</div>
           </Card>
         </div>
 
@@ -210,6 +273,34 @@ export default function App() {
         <div className="space-y-2">
           {workouts?.map((w) => {
             const isSelected = selectedWorkout === w.id;
+            const isEditing = editingWorkoutId === w.id;
+
+            // ── MODO EDIÇÃO ──
+            if (isEditing) {
+              return (
+                <Card key={w.id} variant="accent">
+                  <div className="flex gap-2">
+                    <Input
+                      value={editingWorkoutName}
+                      onChange={setEditingWorkoutName}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveWorkoutName(w.id!);
+                        if (e.key === 'Escape') setEditingWorkoutId(null);
+                      }}
+                    />
+                    <Button
+                      onClick={() => saveWorkoutName(w.id!)}
+                      className="flex-shrink-0"
+                    >
+                      ✓
+                    </Button>
+                  </div>
+                </Card>
+              );
+            }
+
+            // ── MODO NORMAL ──
             return (
               <Card
                 key={w.id}
@@ -217,9 +308,7 @@ export default function App() {
                 className="!p-0 overflow-hidden"
               >
                 <button
-                  onClick={() =>
-                    setSelectedWorkout(isSelected ? null : w.id!)
-                  }
+                  onClick={() => setSelectedWorkout(isSelected ? null : w.id!)}
                   className="w-full text-left px-4 py-3.5 flex items-center justify-between active:scale-[0.99] transition-transform"
                 >
                   <div className="min-w-0 flex-1">
@@ -227,7 +316,9 @@ export default function App() {
                       {w.name}
                     </div>
                     <div className="text-[11px] text-text-3 mt-0.5">
-                      {isSelected ? 'Aberto' : 'Toque para abrir'}
+                      {isSelected
+                        ? `${exercises?.length ?? 0} exercícios`
+                        : 'Toque para abrir'}
                     </div>
                   </div>
                   <span className="text-text-3 text-lg">
@@ -236,45 +327,83 @@ export default function App() {
                 </button>
 
                 {isSelected && (
-                  <div className="px-4 pb-3 space-y-2 animate-fade-in">
-                    {exercises?.length === 0 && (
-                      <p className="text-text-3 text-xs text-center py-2">
-                        Nenhum exercício ainda
-                      </p>
-                    )}
-                    {exercises?.map((ex) => (
-                      <div
-                        key={ex.id}
-                        className="flex items-center justify-between bg-bg-2 rounded-xl px-3 py-2.5"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-5 h-5 rounded-md bg-accent-dim text-accent text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                            {ex.order}
-                          </span>
-                          <span className="text-xs text-text-1 truncate">
-                            {ex.name}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => removeExercise(ex.id!)}
-                          className="text-text-3 hover:text-danger text-xs w-6 h-6 flex items-center justify-center"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-
-                    <div className="flex gap-2 pt-1">
+                  <div className="px-4 pb-3 space-y-3 animate-fade-in">
+                    {/* Ações do treino */}
+                    <div className="grid grid-cols-3 gap-2">
                       <Button
                         variant="secondary"
                         size="sm"
+                        onClick={() => {
+                          setEditingWorkoutId(w.id!);
+                          setEditingWorkoutName(w.name);
+                        }}
+                      >
+                        ✏️ Editar
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => duplicateWorkout(w.id!)}
+                      >
+                        📋 Duplicar
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => deleteWorkout(w.id!)}
+                      >
+                        🗑 Apagar
+                      </Button>
+                    </div>
+
+                    {/* Adicionar exercício manual */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={exerciseName}
+                        onChange={setExerciseName}
+                        placeholder="Adicionar exercício..."
+                        onKeyDown={(e) => e.key === 'Enter' && addExercise()}
+                      />
+                      <Button
+                        variant="secondary"
+                        onClick={addExercise}
+                        disabled={!exerciseName.trim()}
+                        className="flex-shrink-0"
+                      >
+                        +
+                      </Button>
+                    </div>
+
+                    {/* Lista de exercícios */}
+                    {exercises?.length === 0 && (
+                      <p className="text-text-3 text-xs text-center py-3">
+                        Nenhum exercício ainda
+                      </p>
+                    )}
+                    <div className="space-y-2">
+                      {exercises?.map((ex, idx) => (
+                        <ExerciseItem
+                          key={ex.id}
+                          ex={ex}
+                          isFirst={idx === 0}
+                          isLast={idx === exercises.length - 1}
+                          onRemove={() => removeExercise(ex.id!)}
+                          onMoveUp={() => moveExerciseUp(ex.id!)}
+                          onMoveDown={() => moveExerciseDown(ex.id!)}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Botões principais */}
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        variant="secondary"
                         onClick={() => setPickerOpen(true)}
                         className="flex-1"
                       >
-                        + Exercício
+                        📚 Biblioteca
                       </Button>
                       <Button
-                        size="sm"
                         onClick={() => setInSession(true)}
                         disabled={!exercises || exercises.length === 0}
                         className="flex-1"
@@ -299,15 +428,15 @@ export default function App() {
     );
   }
 
-  // ───── TAB: STATS ─────
+  // ══════════════ TAB: STATS ══════════════
   if (tab === 'stats') {
     return <DashboardView onBack={() => setTab('home')} />;
   }
 
-  // ───── TAB: NOVO ─────
+  // ══════════════ TAB: NOVO ══════════════
   if (tab === 'new') {
     return (
-      <AppShell title="Novo treino" bottomNav={bottomNav}>
+      <AppShell title="Novo treino" bottomNav={bottomNav} animationKey={tab} >
         <Card className="space-y-3">
           <label className="text-xs text-text-3 uppercase tracking-wider font-semibold">
             Nome do treino
@@ -329,20 +458,21 @@ export default function App() {
         </Card>
 
         <div className="mt-6">
-          <SectionTitle>Sugestões</SectionTitle>
+          <SectionTitle>Sugestões rápidas</SectionTitle>
           <div className="grid grid-cols-2 gap-2">
             {[
-              'Treino A — Peito',
-              'Treino B — Costas',
-              'Treino C — Pernas',
-              'Treino D — Ombros',
-            ].map((name) => (
+              { emoji: '💪', name: 'Treino A — Peito' },
+              { emoji: '🔙', name: 'Treino B — Costas' },
+              { emoji: '🦵', name: 'Treino C — Pernas' },
+              { emoji: '🏋️', name: 'Treino D — Ombros' },
+            ].map((item) => (
               <button
-                key={name}
-                onClick={() => setWorkoutName(name)}
-                className="bg-bg-1 border border-white/[0.06] rounded-2xl px-3 py-3 text-left text-xs text-text-1 hover:bg-bg-2 active:scale-95 transition-all"
+                key={item.name}
+                onClick={() => setWorkoutName(item.name)}
+                className="bg-bg-1 border border-white/[0.06] rounded-2xl px-3 py-3 text-left hover:bg-bg-2 active:scale-95 transition-all"
               >
-                {name}
+                <div className="text-lg">{item.emoji}</div>
+                <div className="text-xs text-text-1 mt-1">{item.name}</div>
               </button>
             ))}
           </div>
@@ -351,15 +481,150 @@ export default function App() {
     );
   }
 
-  // ───── TAB: AGENDA ─────
+  // ══════════════ TAB: AGENDA ══════════════
   if (tab === 'agenda') {
     return <CalendarView onBack={() => setTab('home')} />;
   }
 
-  // ───── TAB: PERFIL ─────
+  // ══════════════ TAB: PERFIL ══════════════
   if (tab === 'profile') {
     return <ProfileView onBack={() => setTab('home')} />;
   }
 
   return null;
+}
+
+/* ══════════════ COMPONENTES ══════════════ */
+
+function ExerciseItem({
+  ex,
+  isFirst,
+  isLast,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
+}: {
+  ex: {
+    id?: number;
+    name: string;
+    order: number;
+    targetRepsMin?: number;
+    targetRepsMax?: number;
+    note?: string;
+    primaryGroup?: string;
+    useRIR?: boolean;
+    targetRIR?: number;
+  };
+  isFirst: boolean;
+  isLast: boolean;
+  onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  return (
+    <div className="bg-bg-2 rounded-2xl p-3 space-y-2.5 border border-white/[0.04]">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex flex-col gap-0.5 flex-shrink-0">
+            <button
+              onClick={onMoveUp}
+              disabled={isFirst}
+              className="w-5 h-4 flex items-center justify-center rounded text-[9px] text-text-3 hover:text-text-0 hover:bg-white/[0.05] disabled:opacity-20 active:scale-90 transition"
+            >
+              ▲
+            </button>
+            <button
+              onClick={onMoveDown}
+              disabled={isLast}
+              className="w-5 h-4 flex items-center justify-center rounded text-[9px] text-text-3 hover:text-text-0 hover:bg-white/[0.05] disabled:opacity-20 active:scale-90 transition"
+            >
+              ▼
+            </button>
+          </div>
+
+          <span className="w-6 h-6 rounded-lg bg-accent-dim text-accent text-[11px] font-bold flex items-center justify-center flex-shrink-0">
+            {ex.order}
+          </span>
+          <span className="font-medium text-sm truncate text-text-0">
+            {ex.name}
+          </span>
+        </div>
+
+        <button
+          onClick={onRemove}
+          className="text-text-3 hover:text-danger text-sm w-7 h-7 flex items-center justify-center rounded-lg hover:bg-danger/10 active:scale-90 transition-all flex-shrink-0"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Range de reps + RIR */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] text-text-3">🎯</span>
+        <input
+          className="w-12 bg-bg-3 rounded-lg px-2 py-1 outline-none text-center text-xs text-text-0 border border-white/[0.04] focus:border-accent/40"
+          inputMode="numeric"
+          placeholder="min"
+          value={ex.targetRepsMin ?? ''}
+          onChange={(e) => {
+            const v = e.target.value ? parseInt(e.target.value) : undefined;
+            db.exercises.update(ex.id!, { targetRepsMin: v });
+          }}
+        />
+        <span className="text-text-3 text-xs">—</span>
+        <input
+          className="w-12 bg-bg-3 rounded-lg px-2 py-1 outline-none text-center text-xs text-text-0 border border-white/[0.04] focus:border-accent/40"
+          inputMode="numeric"
+          placeholder="max"
+          value={ex.targetRepsMax ?? ''}
+          onChange={(e) => {
+            const v = e.target.value ? parseInt(e.target.value) : undefined;
+            db.exercises.update(ex.id!, { targetRepsMax: v });
+          }}
+        />
+        <span className="text-text-3 text-[10px]">reps</span>
+
+        <label className="flex items-center gap-1.5 cursor-pointer ml-auto">
+          <input
+            type="checkbox"
+            checked={ex.useRIR ?? false}
+            onChange={(e) =>
+              db.exercises.update(ex.id!, { useRIR: e.target.checked })
+            }
+            className="w-3.5 h-3.5 accent-accent"
+          />
+          <span className="text-[10px] text-text-2">🧠 RIR</span>
+        </label>
+
+        {ex.useRIR && (
+          <select
+            className="bg-bg-3 rounded-lg px-2 py-0.5 text-[10px] border border-white/[0.04] outline-none text-text-1"
+            value={ex.targetRIR ?? 2}
+            onChange={(e) =>
+              db.exercises.update(ex.id!, {
+                targetRIR: parseInt(e.target.value),
+              })
+            }
+          >
+            {[0, 1, 2, 3, 4].map((v) => (
+              <option key={v} value={v}>
+                RIR {v}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Nota */}
+      <input
+        className="w-full bg-bg-3 rounded-lg px-2.5 py-1.5 outline-none text-[11px] border border-white/[0.04] focus:border-accent/40 text-text-1"
+        placeholder="📝 Nota permanente"
+        value={ex.note ?? ''}
+        onChange={(e) =>
+          db.exercises.update(ex.id!, { note: e.target.value || undefined })
+        }
+      />
+    </div>
+  );
 }

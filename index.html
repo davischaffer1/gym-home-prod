@@ -8,11 +8,8 @@
     />
     <meta name="theme-color" content="#08080a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta
-      name="apple-mobile-web-app-status-bar-style"
-      content="black-translucent"
-    />
-    <meta name="apple-mobile-web-app-title" content="Treino" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Treino</title>
@@ -68,29 +65,31 @@
               'inset-hi': 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
             },
             animation: {
-              'fade-in': 'fadeIn 0.2s ease-out',
-              'slide-up': 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-              'scale-in': 'scaleIn 0.15s ease-out',
-              'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              slideUp: {
-                '0%': { opacity: '0', transform: 'translateY(8px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              scaleIn: {
-                '0%': { opacity: '0', transform: 'scale(0.96)' },
-                '100%': { opacity: '1', transform: 'scale(1)' },
-              },
-              pulseSoft: {
-                '0%, 100%': { opacity: '0.6' },
-                '50%': { opacity: '1' },
-              },
-            },
+  'fade-in': 'fadeIn 0.2s ease-out',
+  'slide-up': 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+  'slide-in-right': 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+  'slide-in-left': 'slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+  'scale-in': 'scaleIn 0.15s ease-out',
+},
+keyframes: {
+  fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+  slideUp: {
+    '0%': { opacity: '0', transform: 'translateY(8px)' },
+    '100%': { opacity: '1', transform: 'translateY(0)' },
+  },
+  slideInRight: {
+    '0%': { opacity: '0', transform: 'translateX(16px)' },
+    '100%': { opacity: '1', transform: 'translateX(0)' },
+  },
+  slideInLeft: {
+    '0%': { opacity: '0', transform: 'translateX(-16px)' },
+    '100%': { opacity: '1', transform: 'translateX(0)' },
+  },
+  scaleIn: {
+    '0%': { opacity: '0', transform: 'scale(0.96)' },
+    '100%': { opacity: '1', transform: 'scale(1)' },
+  },
+},
           },
         },
       };

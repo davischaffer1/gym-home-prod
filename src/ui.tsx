@@ -408,6 +408,7 @@ export function AppShell({
   bottomNav,
   hideNav,
   noPadding,
+  animationKey,   
 }: {
   title: string;
   subtitle?: string;
@@ -416,6 +417,7 @@ export function AppShell({
   bottomNav?: ReactNode;
   hideNav?: boolean;
   noPadding?: boolean;
+  animationKey?: string | number;   // 👈 novo
 }) {
   return (
     <div className="min-h-screen bg-bg-0 flex flex-col">
@@ -436,23 +438,16 @@ export function AppShell({
         </div>
       </header>
 
-      {/* Conteúdo scrollável */}
-      <main
-        className={`flex-1 overflow-y-auto no-scrollbar ${
-          hideNav ? '' : 'pb-24'
-        }`}
-      >
+      <main className="flex-1 overflow-y-auto no-scrollbar pb-24">
         <div
-          className={`max-w-lg mx-auto ${
-            noPadding ? '' : 'px-4 py-4'
-          }`}
+          key={animationKey}
+          className="max-w-lg mx-auto px-4 py-4 animate-slide-in-right"
         >
           {children}
         </div>
       </main>
 
-      {/* Bottom nav fixa */}
-      {!hideNav && bottomNav}
+      {bottomNav}
     </div>
   );
 }
@@ -510,62 +505,6 @@ export function SubScreen({
 /**
  * Bottom navigation bar — estilo app profissional.
  */
-export function BottomNav({
-  tabs,
-  activeTab,
-  onChange,
-}: {
-  tabs: {
-    id: string;
-    label: string;
-    icon: string;
-    badge?: number;
-  }[];
-  activeTab: string;
-  onChange: (id: string) => void;
-}) {
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-0/90 backdrop-blur-xl border-t border-white/[0.05] safe-bottom">
-      <div className="max-w-lg mx-auto grid grid-cols-5 h-16">
-        {tabs.map((tab) => {
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onChange(tab.id)}
-              className="relative flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform"
-            >
-              <span
-                className={`text-xl transition-all ${
-                  active ? 'scale-110' : 'opacity-50'
-                }`}
-              >
-                {tab.icon}
-              </span>
-              <span
-                className={`text-[10px] font-medium transition-colors ${
-                  active ? 'text-accent' : 'text-text-3'
-                }`}
-              >
-                {tab.label}
-              </span>
-
-              {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-accent" />
-              )}
-
-              {tab.badge !== undefined && tab.badge > 0 && (
-                <span className="absolute top-2 right-1/4 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-bold flex items-center justify-center">
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
 
 /**
  * Botão central flutuante (FAB) — como apps de treino.
@@ -632,3 +571,182 @@ export function ListItem({
     </div>
   );
 }
+
+/* ══════════════════════════════════════════════════════════
+   ÍCONES SVG — minimalistas, estilo app nativo
+   ══════════════════════════════════════════════════════════ */
+
+   export function NavIcon({
+    name,
+    active,
+  }: {
+    name: 'home' | 'chart' | 'plus' | 'calendar' | 'user';
+    active?: boolean;
+  }) {
+    const size = 24;
+    const stroke = active ? 2.4 : 2;
+    const color = active ? 'currentColor' : 'currentColor';
+  
+    if (name === 'plus') {
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={color}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+        >
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+      );
+    }
+  
+    if (name === 'home') {
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill={active ? 'currentColor' : 'none'}
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" fill="none" />
+        </svg>
+      );
+    }
+  
+    if (name === 'chart') {
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <line x1="6" y1="20" x2="6" y2="12" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="18" y1="20" x2="18" y2="14" />
+        </svg>
+      );
+    }
+  
+    if (name === 'calendar') {
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill={active ? 'currentColor' : 'none'}
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" fill="none" />
+          <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" fill="none" />
+          <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" fill="none" />
+        </svg>
+      );
+    }
+  
+    // user
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill={active ? 'currentColor' : 'none'}
+        stroke={color}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" fill={active ? 'currentColor' : 'none'} />
+      </svg>
+    );
+  }
+  
+  /**
+   * Bottom navigation bar — versão profissional com SVG.
+   */
+  export function BottomNav({
+    tabs,
+    activeTab,
+    onChange,
+  }: {
+    tabs: {
+      id: string;
+      label: string;
+      icon: 'home' | 'chart' | 'plus' | 'calendar' | 'user';
+    }[];
+    activeTab: string;
+    onChange: (id: string) => void;
+  }) {
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-0/95 backdrop-blur-xl border-t border-white/[0.05] safe-bottom">
+        <div className="max-w-lg mx-auto grid grid-cols-5 h-[68px] relative">
+          {tabs.map((tab) => {
+            const active = activeTab === tab.id;
+  
+            // Botão central destacado (➕)
+            if (tab.icon === 'plus') {
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onChange(tab.id)}
+                  className="relative flex items-center justify-center active:scale-90 transition-transform"
+                >
+                  <div className="w-12 h-12 -mt-6 rounded-full bg-accent text-black flex items-center justify-center shadow-[0_6px_20px_rgba(34,211,168,0.5)]">
+                    <NavIcon name="plus" />
+                  </div>
+                </button>
+              );
+            }
+  
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onChange(tab.id)}
+                className="relative flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform"
+              >
+                {/* Indicador superior animado */}
+                <span
+                  className={`absolute top-0 h-[3px] rounded-full bg-accent transition-all duration-300 ${
+                    active ? 'w-8 opacity-100' : 'w-0 opacity-0'
+                  }`}
+                />
+  
+                <div
+                  className={`transition-colors duration-200 ${
+                    active ? 'text-accent' : 'text-text-3'
+                  }`}
+                >
+                  <NavIcon name={tab.icon} active={active} />
+                </div>
+                <span
+                  className={`text-[10px] font-medium transition-colors duration-200 ${
+                    active ? 'text-accent' : 'text-text-3'
+                  }`}
+                >
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    );
+  }
