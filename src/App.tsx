@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import SessionView from './SessionView';
@@ -10,6 +10,7 @@ import AchievementsView from './AchievementsView';
 import CalendarView from './CalendarView';
 import ExerciseProgressView from './ExerciseProgressView';
 import { useSwipe } from './useSwipe';
+import { getActiveSession, clearActiveSession } from './activeSession';
 import {
   AppShell,
   BottomNav,
@@ -37,6 +38,25 @@ export default function App() {
   const [editingWorkoutId, setEditingWorkoutId] = useState<number | null>(null);
   const [editingWorkoutName, setEditingWorkoutName] = useState('');
 
+  // ══════════════ RESTAURA SESSÃO ATIVA ══════════════
+  useEffect(() => {
+    (async () => {
+      const activeId = getActiveSession();
+      if (!activeId) return;
+
+      const session = await db.sessions.get(activeId);
+      if (!session || session.finishedAt) {
+        clearActiveSession();
+        return;
+      }
+
+      // Sessão encontrada — restaura automaticamente
+      setSelectedWorkout(session.workoutId);
+      setInSession(true);
+    })();
+  }, []);
+
+  // ══════════════ QUERIES ══════════════
   const workouts = useLiveQuery(async () => {
     const all = await db.workouts.toArray();
     return all.sort((a, b) => b.createdAt - a.createdAt);
@@ -52,7 +72,7 @@ export default function App() {
 
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
 
-  // ───── Swipe entre abas ─────
+  // ══════════════ SWIPE ENTRE ABAS ══════════════
   const currentIdx = TABS.indexOf(tab === 'new' ? 'home' : tab);
 
   useSwipe({
@@ -190,8 +210,10 @@ export default function App() {
   }
 
   // ══════════════ SUB-TELAS ══════════════
-  if (subView === 'history') return <HistoryView onBack={() => setSubView(null)} />;
-  if (subView === 'progress') return <DashboardView onBack={() => setSubView(null)} />;
+  if (subView === 'history')
+    return <HistoryView onBack={() => setSubView(null)} />;
+  if (subView === 'progress')
+    return <DashboardView onBack={() => setSubView(null)} />;
   if (subView === 'achievements')
     return <AchievementsView onBack={() => setSubView(null)} />;
 
@@ -233,14 +255,28 @@ export default function App() {
         >
           {/* Atalhos */}
           <div className="grid grid-cols-2 gap-2 mb-5">
-            <Card interactive onClick={() => setTab('stats')} className="!p-3.5">
+            <Card
+              interactive
+              onClick={() => setTab('stats')}
+              className="!p-3.5"
+            >
               <span className="text-xl">📊</span>
-              <div className="text-sm font-semibold text-text-0 mt-1">Stats</div>
-              <div className="text-[10px] text-text-3">Estatísticas gerais</div>
+              <div className="text-sm font-semibold text-text-0 mt-1">
+                Stats
+              </div>
+              <div className="text-[10px] text-text-3">
+                Estatísticas gerais
+              </div>
             </Card>
-            <Card interactive onClick={() => setSubView('history')} className="!p-3.5">
+            <Card
+              interactive
+              onClick={() => setSubView('history')}
+              className="!p-3.5"
+            >
               <span className="text-xl">📜</span>
-              <div className="text-sm font-semibold text-text-0 mt-1">Histórico</div>
+              <div className="text-sm font-semibold text-text-0 mt-1">
+                Histórico
+              </div>
               <div className="text-[10px] text-text-3">Treinos passados</div>
             </Card>
           </div>
@@ -303,7 +339,9 @@ export default function App() {
                   className="!p-0 overflow-hidden"
                 >
                   <button
-                    onClick={() => setSelectedWorkout(isSelected ? null : w.id!)}
+                    onClick={() =>
+                      setSelectedWorkout(isSelected ? null : w.id!)
+                    }
                     className="w-full text-left px-4 py-3.5 flex items-center justify-between active:scale-[0.99] transition-transform"
                   >
                     <div className="min-w-0 flex-1">
@@ -355,7 +393,9 @@ export default function App() {
                           value={exerciseName}
                           onChange={setExerciseName}
                           placeholder="Adicionar exercício..."
-                          onKeyDown={(e) => e.key === 'Enter' && addExercise()}
+                          onKeyDown={(e) =>
+                            e.key === 'Enter' && addExercise()
+                          }
                         />
                         <Button
                           variant="secondary"
@@ -486,7 +526,11 @@ export default function App() {
         </div>
 
         <div className="mt-6">
-          <Button variant="secondary" fullWidth onClick={() => setTab('home')}>
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => setTab('home')}
+          >
             ← Voltar
           </Button>
         </div>

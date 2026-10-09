@@ -18,6 +18,8 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { SubScreen } from './ui';
+import { calculateReadiness } from './sportsScience';
+import { calculateACWR, calculateStrain, calculateSessionRPE } from './sportsScience';
 
 interface Props {
   onBack: () => void;
@@ -176,6 +178,56 @@ export default function DashboardView({ onBack, onNavigateToEvolution }: Props) 
     }
   }
 
+  // Monta dailyLoads (Session-RPE por dia)
+const dailyLoads = (() => {
+  if (!sessions || !sets) return [];
+
+  const map = new Map<string, number>();
+
+  for (const s of sessions) {
+    const key = new Date(s.startedAt).toISOString().slice(0, 10);
+    const durationMin = Math.round(
+      (s.finishedAt! - s.startedAt - (s.totalPausedMs ?? 0)) / 60000
+    );
+
+    // RPE médio das séries dessa sessão
+    const sessSets = sets.filter((x) => x.sessionId === s.id);
+    const rpes = sessSets
+      .filter((x) => x.rpe !== undefined)
+      .map((x) => x.rpe!);
+    const avgRPE =
+      rpes.length > 0
+        ? rpes.reduce((a, b) => a + b, 0) / rpes.length
+        : 7; // default
+
+    const load = calculateSessionRPE(durationMin, avgRPE);
+    map.set(key, (map.get(key) ?? 0) + load);
+  }
+
+  return Array.from(map.entries()).map(([date, load]) => ({ date, load }));
+})();
+
+const acwr = dailyLoads.length > 0 ? calculateACWR(dailyLoads) : null;
+const strain = dailyLoads.length > 0 ? calculateStrain(dailyLoads) : null;
+
+  const readiness = (() => {
+    if (!sessions || sessions.length === 0) return null;
+  
+    const lastSession = sessions[0];
+    const daysSince = Math.floor(
+      (Date.now() - lastSession.startedAt) / (24 * 60 * 60 * 1000)
+    );
+  
+    // Valores padrão (o usuário pode sobrescrever com quick input no futuro)
+    return calculateReadiness({
+      daysSinceLastWorkout: daysSince,
+      soreness: 2,
+      sleepHours: 7.5,
+      stress: 2,
+      mood: 4,
+    });
+  })();
+
   // ───── JSX ─────
 
   return (
@@ -214,6 +266,98 @@ export default function DashboardView({ onBack, onNavigateToEvolution }: Props) 
             ←
           </button>
         </div>
+
+        {readiness && <ReadinessCard data={readiness} />}
+        {acwr && (
+  <section className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4">
+    <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-1">
+      📉 Carga (ACWR)
+    </div>
+    <div className="text-[10px] text-text-3 italic mb-3">
+      Base: Gabbett (2016)
+    </div>
+
+    <div className="flex items-baseline gap-2 mb-2">
+      <span
+        className={`text-2xl font-bold ${
+          acwr.zone === 'ideal'
+            ? 'text-accent'
+            : acwr.zone === 'risco'
+            ? 'text-danger'
+            : acwr.zone === 'atenção'
+            ? 'text-warn'
+            : 'text-info'
+        }`}
+      >
+        {acwr.ratio}
+      </span>
+      <span className="text-xs text-text-3">
+        aguda {acwr.acute} / crônica {acwr.chronic}
+      </span>
+    </div>
+
+    <div className="w-full h-2 bg-white/[0.05] rounded-full overflow-hidden mb-2 relative">
+      {/* Zona ideal (0.8 - 1.3) */}
+      <div
+        className="absolute inset-y-0 bg-accent/20"
+        style={{ left: '20%', width: '25%' }}
+      />
+      {/* Marcador */}
+      <div
+        className="absolute inset-y-0 w-1 bg-accent rounded-full transition-all"
+        style={{
+          left: `${Math.min(95, (acwr.ratio / 2) * 100)}%`,
+        }}
+      />
+    </div>
+
+    <p className="text-xs text-text-2">{acwr.recommendation}</p>
+  </section>
+)}
+
+{strain && strain.weeklyLoad > 0 && (
+  <section className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4">
+    <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-1">
+      ⚡ Strain & Monotonia
+    </div>
+    <div className="text-[10px] text-text-3 italic mb-3">
+      Base: Foster (1998, 2001)
+    </div>
+
+    <div className="grid grid-cols-3 gap-2 text-center">
+      <div className="bg-bg-2 rounded-xl p-2">
+        <div className="text-[9px] text-text-3 uppercase">Carga</div>
+        <div className="text-base font-bold text-text-0">
+          {strain.weeklyLoad}
+        </div>
+      </div>
+      <div className="bg-bg-2 rounded-xl p-2">
+        <div className="text-[9px] text-text-3 uppercase">Monotonia</div>
+        <div
+          className={`text-base font-bold ${
+            strain.monotony > 2 ? 'text-warn' : 'text-text-0'
+          }`}
+        >
+          {strain.monotony}
+        </div>
+      </div>
+      <div className="bg-bg-2 rounded-xl p-2">
+        <div className="text-[9px] text-text-3 uppercase">Strain</div>
+        <div
+          className={`text-base font-bold ${
+            strain.strain > 6000 ? 'text-danger' : 'text-text-0'
+          }`}
+        >
+          {strain.strain}
+        </div>
+      </div>
+    </div>
+
+    {strain.warning && (
+      <p className="text-xs text-warn mt-3">{strain.warning}</p>
+    )}
+  </section>
+)}
 
         {/* Banner de deload */}
         {deloadInfo.yes && (
@@ -693,4 +837,70 @@ function computeWeeklySessions(
     });
   }
   return data;
+}
+
+function ReadinessCard({
+  data,
+}: {
+  data: {
+    score: number;
+    level: string;
+    recommendation: string;
+    factors: { name: string; score: number; weight: number }[];
+  };
+}) {
+  const colors = {
+    baixa: 'text-danger',
+    moderada: 'text-warn',
+    boa: 'text-accent',
+    excelente: 'text-accent',
+  };
+
+  const bgColors = {
+    baixa: 'bg-danger/10 border-danger/30',
+    moderada: 'bg-warn/10 border-warn/30',
+    boa: 'bg-accent-dim border-accent/30',
+    excelente: 'bg-accent-dim border-accent/30',
+  };
+
+  const color = colors[data.level as keyof typeof colors];
+  const bg = bgColors[data.level as keyof typeof bgColors];
+
+  return (
+    <section className={`rounded-2xl border p-4 ${bg}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="text-xs text-text-3 uppercase tracking-wider font-semibold">
+            💤 Prontidão
+          </div>
+          <div className="text-[10px] text-text-3 italic">
+            Base: Saw (2016), Bourdon (2017)
+          </div>
+        </div>
+        <div className="text-right">
+          <div className={`text-3xl font-bold ${color}`}>{data.score}</div>
+          <div className="text-[10px] text-text-3">de 100</div>
+        </div>
+      </div>
+
+      <div className="text-sm text-text-1 mb-2">{data.recommendation}</div>
+
+      <div className="space-y-1.5">
+        {data.factors.map((f, i) => (
+          <div key={i} className="flex items-center gap-2 text-[10px]">
+            <span className="w-20 text-text-3">{f.name}</span>
+            <div className="flex-1 h-1 bg-white/[0.05] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-accent/60 rounded-full"
+                style={{ width: `${f.score}%` }}
+              />
+            </div>
+            <span className="w-8 text-right text-text-2">
+              {Math.round(f.score)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }

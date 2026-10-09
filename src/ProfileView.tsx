@@ -1,156 +1,974 @@
-import { useEffect, useState } from 'react';
-import { getProfile, saveProfile, type Profile } from './db';
-import { SubScreen } from './ui';
+import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from './db';
+import { SubScreen, Card, SectionTitle, Button, Input } from './ui';
+import {
+  calculateISR,
+  getStrengthPercentile,
+  calculateWaterTarget,
+  calculateProteinTarget,
+  calculateBMR,
+  calculateTDEE,
+  calculateSomatotype,
+} from './sportsScience';
+import { estimate1RMPrecise } from './trainingScience';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
 
 interface Props {
   onBack: () => void;
 }
 
-
-
 export default function ProfileView({ onBack }: Props) {
-  const [form, setForm] = useState<Omit<Profile, 'id' | 'updatedAt'>>({
-    name: '',
-    weightKg: 75,
-    heightCm: 175,
-    age: 30,
-    sex: 'M',
-    restSeconds: 90,
-  });
-  const [saved, setSaved] = useState(false);
+  const [tab, setTab] = useState<'perfil' | 'corporal' | 'config'>('perfil');
 
-  useEffect(() => {
-    getProfile().then((p) => {
-      if (p) {
-        const { id, updatedAt, ...rest } = p;
-        setForm(rest);
-      }
-    });
+  // ══════════════ HOOKS ══════════════
+  const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
+  const workouts = useLiveQuery(() => db.workouts.toArray(), []);
+  const sessions = useLiveQuery(async () => {
+    const all = await db.sessions
+      .filter((s) => s.finishedAt !== undefined)
+      .toArray();
+    return all.sort((a, b) => b.startedAt - a.startedAt);
   }, []);
+  const sets = useLiveQuery(() => db.sets.toArray(), []);
+  const exercises = useLiveQuery(() => db.exercises.toArray(), []);
 
-  async function handleSave() {
-    await saveProfile(form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  // ══════════════ ✅ FUNÇÃO QUE CRIA/ATUALIZA ══════════════
+  async function saveProfileField(field: string, value: any) {
+    const existing = await db.profile.toCollection().first();
+
+    if (existing?.id) {
+      await db.profile.update(existing.id, { [field]: value });
+    } else {
+      await db.profile.add({
+        name: '',
+        weightKg: 75,
+        heightCm: 175,
+        age: 30,
+        sex: 'M',
+        restSeconds: 90,
+        updatedAt: Date.now(),
+        [field]: value,
+      });
+    }
   }
 
+  // ══════════════ CÁLCULOS ══════════════
+  const streak = sessions ? computeStreak(sessions.map((s) => s.startedAt)) : 0;
+  const totalSessions = sessions?.length ?? 0;
+  const totalVolume = sets?.reduce((a, s) => a + s.reps * s.weight, 0) ?? 0;
+  const totalMinutes =
+    sessions?.reduce(
+      (a, s) =>
+        a +
+        Math.round(
+          (s.finishedAt! - s.startedAt - (s.totalPausedMs ?? 0)) / 60000
+        ),
+      0
+    ) ?? 0;
+
+  // ISR
+  const isr = (() => {
+    if (!sets || !exercises || !profile?.weightKg) return null;
+
+    const find1RM = (keyword: string) => {
+      const ex = exercises.find((e) => e.name.toLowerCase().includes(keyword));
+      if (!ex) return 0;
+      const exSets = sets.filter((s) => s.exerciseId === ex.id);
+      let best = 0;
+      for (const s of exSets) {
+        const est = estimate1RMPrecise(s.weight, s.reps);
+        if (est > best) best = est;
+      }
+      return best;
+    };
+
+    const bench = find1RM('supino');
+    const squat = find1RM('agachamento');
+    const dead = find1RM('terra');
+
+    if (bench === 0 && squat === 0 && dead === 0) return null;
+    return calculateISR(bench, squat, dead, profile.weightKg);
+  })();
+
+  // Percentis
+  const percentiles = (() => {
+    if (!sets || !exercises || !profile?.weightKg) return [];
+
+    const TOP_EXERCISES = ['supino', 'agachamento', 'terra', 'desenvolvimento'];
+    const results: ReturnType<typeof getStrengthPercentile>[] = [];
+
+    for (const keyword of TOP_EXERCISES) {
+      const ex = exercises.find((e) => e.name.toLowerCase().includes(keyword));
+      if (!ex) continue;
+
+      const exSets = sets.filter((s) => s.exerciseId === ex.id);
+      let best = 0;
+      for (const s of exSets) {
+        const est = estimate1RMPrecise(s.weight, s.reps);
+        if (est > best) best = est;
+      }
+      if (best === 0) continue;
+
+      const p = getStrengthPercentile(ex.name, best, profile.weightKg);
+      if (p) results.push(p);
+    }
+
+    return results;
+  })();
+
+  // Metas diárias — assume 75 kg se não tiver perfil
+  const effectiveWeight = profile?.weightKg ?? 75;
+  const waterTarget = calculateWaterTarget(effectiveWeight);
+  const proteinTarget = calculateProteinTarget(effectiveWeight, 'hipertrofia');
+
+  const bmr =
+    profile?.weightKg && profile?.heightCm && profile?.age && profile?.sex
+      ? calculateBMR(
+          profile.weightKg,
+          profile.heightCm,
+          profile.age,
+          profile.sex
+        )
+      : 0;
+
+  const tdee = bmr ? calculateTDEE(bmr, 'moderado') : 0;
+
+  // ══════════════ JSX ══════════════
   return (
-    <SubScreen title="PerfilVisualizador" onBack={onBack}>
-      <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">👤 Perfil</h1>
-        <button
-          onClick={onBack}
-          className="bg-bg-2 hover:bg-zinc-700 px-4 py-2 rounded-lg"
-        >
-          Voltar
-        </button>
+    <SubScreen title="Perfil" onBack={onBack}>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-5 bg-bg-1 border border-white/[0.06] rounded-2xl p-1">
+        {(['perfil', 'corporal', 'config'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+              tab === t
+                ? 'bg-accent text-black'
+                : 'text-text-3 hover:text-text-1'
+            }`}
+          >
+            {t === 'perfil'
+              ? '👤 Perfil'
+              : t === 'corporal'
+              ? '📏 Corporal'
+              : '⚙️ Config'}
+          </button>
+        ))}
       </div>
 
-      <section className="bg-bg-1 rounded-2xl p-4 space-y-4">
-        <Field label="Nome">
-          <input
-            className="w-full bg-bg-2 rounded-lg px-3 py-2 outline-none"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Como quer ser chamado"
-          />
-        </Field>
+      {/* ══ PERFIL ══ */}
+      {tab === 'perfil' && (
+        <div className="space-y-5">
+          <Card>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-accent-dim flex items-center justify-center text-2xl font-bold text-accent flex-shrink-0">
+                {profile?.name
+                  ? profile.name
+                      .split(' ')
+                      .map((w) => w[0])
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase()
+                  : '?'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-text-0 truncate">
+                  {profile?.name ?? 'Sem nome'}
+                </div>
+                {isr && (
+                  <div className="text-xs text-text-3 mt-0.5">
+                    🏅 Nível: {isr.level}
+                  </div>
+                )}
+                {profile?.sex && profile?.age && (
+                  <div className="text-[10px] text-text-3 mt-0.5">
+                    {profile.sex === 'M' ? 'Masculino' : 'Feminino'} ·{' '}
+                    {profile.age} anos
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Peso (kg)">
-            <input
-              className="w-full bg-bg-2 rounded-lg px-3 py-2 outline-none"
-              inputMode="decimal"
-              value={form.weightKg}
-              onChange={(e) =>
-                setForm({ ...form, weightKg: parseFloat(e.target.value) || 0 })
-              }
+          <div className="grid grid-cols-2 gap-2">
+            <MiniStat icon="🔥" value={String(streak)} label="Streak" />
+            <MiniStat icon="🏋️" value={String(totalSessions)} label="Treinos" />
+            <MiniStat
+              icon="📦"
+              value={`${Math.round(totalVolume / 1000)}t`}
+              label="Volume total"
             />
-          </Field>
-          <Field label="Altura (cm)">
-            <input
-              className="w-full bg-bg-2 rounded-lg px-3 py-2 outline-none"
-              inputMode="numeric"
-              value={form.heightCm}
-              onChange={(e) =>
-                setForm({ ...form, heightCm: parseInt(e.target.value) || 0 })
-              }
+            <MiniStat
+              icon="⏱"
+              value={`${Math.floor(totalMinutes / 60)}h`}
+              label="Tempo"
             />
-          </Field>
+          </div>
+
+          {isr && (
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-xs text-text-3 uppercase tracking-wider font-semibold">
+                    🧬 Índice de Força Relativa
+                  </div>
+                  <div className="text-[10px] text-text-3 mt-0.5">
+                    Base: Rikli & Jones (1999), ACSM
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-accent">
+                    {isr.isr.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-text-3">× peso</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="text-sm font-semibold text-text-0">
+                  {isr.level}
+                </div>
+                {isr.nextLevel && (
+                  <span className="text-[10px] text-text-3">
+                    · próximo: {isr.nextLevel.toFixed(2)}
+                  </span>
+                )}
+              </div>
+              <div className="w-full h-2 bg-white/[0.05] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-accent to-accent-hover transition-all duration-500 rounded-full"
+                  style={{ width: `${isr.percentToNext}%` }}
+                />
+              </div>
+              <div className="text-[10px] text-text-3 mt-2">
+                Total dos 3 grandes: {isr.total1RM} kg
+              </div>
+            </Card>
+          )}
+
+          {percentiles.length > 0 && (
+            <Card>
+              <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-3">
+                💪 Força relativa
+              </div>
+              <div className="space-y-3">
+                {percentiles.map((p, i) => (
+                  <div key={i}>
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="text-sm text-text-1">{p?.exercise}</div>
+                      <div className="text-xs">
+                        <span className="font-bold text-accent">
+                          {p?.percentile}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-accent rounded-full transition-all"
+                        style={{ width: `${p?.percentile ?? 0}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-text-3 mt-0.5">
+                      {p?.level} · {p?.ratio}× peso
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {!isr && percentiles.length === 0 && (
+            <Card variant="subtle">
+              <p className="text-text-3 text-sm text-center py-4">
+                Complete treinos com supino, agachamento e terra para ver
+                métricas de força.
+              </p>
+            </Card>
+          )}
         </div>
+      )}
 
-        <Field label="Descanso padrão (segundos)">
-          <input
-            className="w-full bg-bg-2 rounded-lg px-3 py-2 outline-none"
-            inputMode="numeric"
-            value={form.restSeconds}
-            onChange={(e) =>
-              setForm({ ...form, restSeconds: parseInt(e.target.value) || 60 })
-            }
-          />
-        </Field>
+      {/* ══ CORPORAL ══ */}
+      {tab === 'corporal' && (
+        <div className="space-y-5">
+          {(!profile?.weightKg ||
+            !profile?.heightCm ||
+            !profile?.age ||
+            !profile?.sex) && (
+            <Card variant="subtle">
+              <div className="flex items-start gap-3">
+                <span className="text-lg">⚠️</span>
+                <div className="text-xs text-text-2">
+                  <strong className="text-warn">Perfil incompleto.</strong>{' '}
+                  Preencha peso, altura, idade e sexo na aba{' '}
+                  <strong>⚙️ Config</strong> para cálculos precisos.{' '}
+                  <span className="text-text-3">
+                    (Usando peso padrão de 75 kg)
+                  </span>
+                </div>
+              </div>
+            </Card>
+          )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Idade">
-            <input
-              className="w-full bg-bg-2 rounded-lg px-3 py-2 outline-none"
-              inputMode="numeric"
-              value={form.age}
-              onChange={(e) =>
-                setForm({ ...form, age: parseInt(e.target.value) || 0 })
-              }
-            />
-          </Field>
-          <Field label="Sexo">
-            <div className="flex gap-2">
+          {profile?.weightKg && (
+            <Card>
+              <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-2">
+                Peso atual
+              </div>
+              <div className="text-2xl font-bold text-text-0">
+                {profile.weightKg} kg
+              </div>
+            </Card>
+          )}
+
+          <Card>
+            <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-3">
+              🎯 Metas diárias
+            </div>
+            <div className="space-y-3">
+              <DailyTarget
+                icon="💧"
+                title="Hidratação"
+                value={`${(waterTarget / 1000).toFixed(1)} L`}
+                reference="ACSM (2007)"
+              />
+              <DailyTarget
+                icon="🥩"
+                title="Proteína"
+                value={`${proteinTarget.min}–${proteinTarget.max} g`}
+                reference="Morton et al. (2018)"
+              />
+              {tdee > 0 && (
+                <DailyTarget
+                  icon="🔥"
+                  title="Calorias (TDEE)"
+                  value={`${tdee} kcal`}
+                  reference="Mifflin et al. (1990)"
+                  subtitle={`TMB: ${bmr} kcal`}
+                />
+              )}
+            </div>
+          </Card>
+
+          <BodyMeasurements />
+          <SomatotypeCard />
+        </div>
+      )}
+
+      {/* ══ CONFIG ══ */}
+      {tab === 'config' && (
+        <div className="space-y-5">
+          <Card>
+            <SectionTitle>Dados pessoais</SectionTitle>
+            <div className="space-y-3 mt-3">
+              <ProfileField
+                label="Nome"
+                value={profile?.name ?? ''}
+                onSave={(v) => saveProfileField('name', v)}
+              />
+              <ProfileField
+                label="Peso (kg)"
+                type="decimal"
+                value={String(profile?.weightKg ?? '')}
+                onSave={(v) => saveProfileField('weightKg', parseFloat(v) || 0)}
+              />
+              <ProfileField
+                label="Altura (cm)"
+                type="numeric"
+                value={String(profile?.heightCm ?? '')}
+                onSave={(v) => saveProfileField('heightCm', parseInt(v) || 0)}
+              />
+              <ProfileField
+                label="Idade"
+                type="numeric"
+                value={String(profile?.age ?? '')}
+                onSave={(v) => saveProfileField('age', parseInt(v) || 0)}
+              />
+              <ProfileField
+                label="Descanso padrão (s)"
+                type="numeric"
+                value={String(profile?.restSeconds ?? 90)}
+                onSave={(v) =>
+                  saveProfileField('restSeconds', parseInt(v) || 90)
+                }
+              />
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle>Sexo</SectionTitle>
+            <div className="grid grid-cols-2 gap-2 mt-3">
               <button
-                onClick={() => setForm({ ...form, sex: 'M' })}
-                className={`flex-1 py-2 rounded-lg ${
-                  form.sex === 'M'
-                    ? 'bg-accent'
-                    : 'bg-bg-2 hover:bg-zinc-700'
+                onClick={() => saveProfileField('sex', 'M')}
+                className={`py-3 rounded-xl text-sm font-semibold transition-all ${
+                  profile?.sex === 'M'
+                    ? 'bg-accent text-black'
+                    : 'bg-bg-2 border border-white/[0.06] text-text-2 hover:bg-bg-3'
                 }`}
               >
                 Masculino
               </button>
               <button
-                onClick={() => setForm({ ...form, sex: 'F' })}
-                className={`flex-1 py-2 rounded-lg ${
-                  form.sex === 'F'
-                    ? 'bg-accent'
-                    : 'bg-bg-2 hover:bg-zinc-700'
+                onClick={() => saveProfileField('sex', 'F')}
+                className={`py-3 rounded-xl text-sm font-semibold transition-all ${
+                  profile?.sex === 'F'
+                    ? 'bg-accent text-black'
+                    : 'bg-bg-2 border border-white/[0.06] text-text-2 hover:bg-bg-3'
                 }`}
               >
                 Feminino
               </button>
             </div>
-          </Field>
-        </div>
+          </Card>
 
-        <button
-          onClick={handleSave}
-          className="w-full bg-accent hover:bg-accent-hover py-3 rounded-lg font-semibold"
-        >
-          {saved ? '✅ Salvo!' : 'Salvar perfil'}
-        </button>
-      </section>
-    </div>
+          <Card>
+            <SectionTitle>Sobre</SectionTitle>
+            <div className="space-y-2 mt-3 text-xs text-text-3">
+              <div className="flex justify-between">
+                <span>Versão</span>
+                <span className="text-text-1">1.0.0</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Feito com</span>
+                <span>💪 e ciência</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </SubScreen>
   );
 }
 
-function Field({
+/* ══════════════ COMPONENTES ══════════════ */
+
+function MiniStat({
+  icon,
+  value,
   label,
-  children,
+}: {
+  icon: string;
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="bg-bg-1 border border-white/[0.06] rounded-2xl p-3 text-center">
+      <div className="text-xl">{icon}</div>
+      <div className="text-base font-bold text-text-0 mt-0.5">{value}</div>
+      <div className="text-[10px] text-text-3 uppercase tracking-wider mt-0.5">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function DailyTarget({
+  icon,
+  title,
+  value,
+  reference,
+  subtitle,
+}: {
+  icon: string;
+  title: string;
+  value: string;
+  reference: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="bg-bg-2 border border-white/[0.04] rounded-xl px-3 py-2.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{icon}</span>
+          <div>
+            <div className="text-sm font-medium text-text-0">{title}</div>
+            <div className="text-[9px] text-text-3 italic">{reference}</div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-sm font-bold text-accent">{value}</div>
+          {subtitle && (
+            <div className="text-[9px] text-text-3">{subtitle}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileField({
+  label,
+  value,
+  onSave,
+  type = 'text',
 }: {
   label: string;
-  children: React.ReactNode;
+  value: string;
+  onSave: (v: string) => void;
+  type?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  return (
+    <div>
+      <label className="text-[10px] text-text-3 uppercase tracking-wider font-semibold">
+        {label}
+      </label>
+      {editing ? (
+        <div className="flex gap-2 mt-1">
+          <Input
+            value={draft}
+            onChange={setDraft}
+            type={type}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                onSave(draft);
+                setEditing(false);
+              }
+              if (e.key === 'Escape') {
+                setDraft(value);
+                setEditing(false);
+              }
+            }}
+          />
+          <Button
+            onClick={() => {
+              onSave(draft);
+              setEditing(false);
+            }}
+            className="flex-shrink-0"
+          >
+            ✓
+          </Button>
+        </div>
+      ) : (
+        <button
+          onClick={() => {
+            setDraft(value);
+            setEditing(true);
+          }}
+          className="w-full mt-1 text-left bg-bg-2 border border-white/[0.04] rounded-xl px-3 py-2.5 hover:bg-bg-3 active:scale-[0.99] transition-all"
+        >
+          <span className="text-sm text-text-1">{value || '—'}</span>
+          <span className="text-text-3 text-xs float-right">✎</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════ MEDIDAS ══════════════ */
+
+function BodyMeasurements() {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    weightKg: '',
+    bodyFatPct: '',
+    chestCm: '',
+    waistCm: '',
+    hipCm: '',
+    armCm: '',
+    thighCm: '',
+    calfCm: '',
+    neckCm: '',
+  });
+
+  const measurements = useLiveQuery(
+    () => db.bodyMeasurements.orderBy('date').reverse().toArray(),
+    []
+  );
+
+  async function save() {
+    const num = (v: string) => (v ? parseFloat(v) : undefined);
+    await db.bodyMeasurements.add({
+      date: Date.now(),
+      weightKg: num(form.weightKg),
+      bodyFatPct: num(form.bodyFatPct),
+      chestCm: num(form.chestCm),
+      waistCm: num(form.waistCm),
+      hipCm: num(form.hipCm),
+      armCm: num(form.armCm),
+      thighCm: num(form.thighCm),
+      calfCm: num(form.calfCm),
+      neckCm: num(form.neckCm),
+    });
+    setForm({
+      weightKg: '',
+      bodyFatPct: '',
+      chestCm: '',
+      waistCm: '',
+      hipCm: '',
+      armCm: '',
+      thighCm: '',
+      calfCm: '',
+      neckCm: '',
+    });
+    setShowForm(false);
+  }
+
+  const weightPoints =
+    measurements
+      ?.filter((m) => m.weightKg !== undefined)
+      .map((m) => ({
+        date: new Date(m.date).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+        }),
+        weight: m.weightKg,
+      }))
+      .reverse() ?? [];
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="text-xs text-text-3 uppercase tracking-wider font-semibold">
+            📏 Medidas corporais
+          </div>
+          <div className="text-[10px] text-text-3 italic mt-0.5">
+            Base: ISAK
+          </div>
+        </div>
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="text-xs text-accent font-medium"
+        >
+          {showForm ? 'Cancelar' : '+ Nova'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="space-y-2 mb-4 animate-fade-in">
+          <MeasureInput
+            label="Peso (kg)"
+            value={form.weightKg}
+            onChange={(v) => setForm({ ...form, weightKg: v })}
+          />
+          <MeasureInput
+            label="% Gordura"
+            value={form.bodyFatPct}
+            onChange={(v) => setForm({ ...form, bodyFatPct: v })}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <MeasureInput
+              label="Peito (cm)"
+              value={form.chestCm}
+              onChange={(v) => setForm({ ...form, chestCm: v })}
+            />
+            <MeasureInput
+              label="Cintura (cm)"
+              value={form.waistCm}
+              onChange={(v) => setForm({ ...form, waistCm: v })}
+            />
+            <MeasureInput
+              label="Quadril (cm)"
+              value={form.hipCm}
+              onChange={(v) => setForm({ ...form, hipCm: v })}
+            />
+            <MeasureInput
+              label="Braço (cm)"
+              value={form.armCm}
+              onChange={(v) => setForm({ ...form, armCm: v })}
+            />
+            <MeasureInput
+              label="Coxa (cm)"
+              value={form.thighCm}
+              onChange={(v) => setForm({ ...form, thighCm: v })}
+            />
+            <MeasureInput
+              label="Panturrilha (cm)"
+              value={form.calfCm}
+              onChange={(v) => setForm({ ...form, calfCm: v })}
+            />
+            <MeasureInput
+              label="Pescoço (cm)"
+              value={form.neckCm}
+              onChange={(v) => setForm({ ...form, neckCm: v })}
+            />
+          </div>
+          <Button fullWidth onClick={save}>
+            Salvar medida
+          </Button>
+        </div>
+      )}
+
+      {measurements?.length === 0 && !showForm && (
+        <p className="text-text-3 text-xs text-center py-3">
+          Nenhuma medida registrada
+        </p>
+      )}
+
+      {measurements && measurements.length > 0 && (
+        <>
+          <div className="space-y-2">
+            {measurements.slice(0, 3).map((m) => (
+              <div
+                key={m.id}
+                className="bg-bg-2 border border-white/[0.04] rounded-xl px-3 py-2"
+              >
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-medium text-text-1">
+                    {new Date(m.date).toLocaleDateString('pt-BR')}
+                  </span>
+                  <button
+                    onClick={() => db.bodyMeasurements.delete(m.id!)}
+                    className="text-danger/70 text-xs"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="text-[10px] text-text-3 flex flex-wrap gap-2">
+                  {m.weightKg && <span>⚖️ {m.weightKg} kg</span>}
+                  {m.bodyFatPct && <span>📊 {m.bodyFatPct}%</span>}
+                  {m.waistCm && <span>〰️ Cintura {m.waistCm}cm</span>}
+                  {m.armCm && <span>💪 Braço {m.armCm}cm</span>}
+                  {m.thighCm && <span>🦵 Coxa {m.thighCm}cm</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {weightPoints.length >= 2 && (
+            <div className="mt-4 pt-4 border-t border-white/[0.04]">
+              <div className="text-[10px] text-text-3 uppercase tracking-wider font-semibold mb-2">
+                Evolução de peso
+              </div>
+              <div style={{ width: '100%', height: 140 }}>
+                <ResponsiveContainer>
+                  <LineChart data={weightPoints}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#1f1f26"
+                    />
+                    <XAxis
+                      dataKey="date"
+                      stroke="#52525b"
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke="#52525b"
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                      width={32}
+                      domain={['dataMin - 2', 'dataMax + 2']}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: '#0f0f12',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 12,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="weight"
+                      stroke="#22d3a8"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
+function MeasureInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
 }) {
   return (
     <div>
-      <label className="block text-xs text-text-2 mb-1">{label}</label>
-      {children}
+      <label className="text-[10px] text-text-3">{label}</label>
+      <input
+        className="w-full mt-0.5 bg-bg-2 border border-white/[0.04] rounded-xl px-3 py-2 text-sm text-text-0 outline-none focus:border-accent/40"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="—"
+      />
     </div>
   );
+}
+
+/* ══════════════ SOMATOTIPO ══════════════ */
+
+function SomatotypeCard() {
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, number>>({
+    bodyBuild: 4,
+    muscle: 4,
+    fat: 4,
+    shoulders: 4,
+    arms: 4,
+    legs: 4,
+    diet: 4,
+    metabolism: 4,
+    strength: 4,
+    activity: 4,
+  });
+
+  const lastResult = useLiveQuery(
+    () => db.somatotypes.orderBy('date').reverse().first(),
+    []
+  );
+
+  async function calculate() {
+    const result = calculateSomatotype(answers as any);
+    await db.somatotypes.add({
+      date: Date.now(),
+      endomorphy: result.endomorphy,
+      mesomorphy: result.mesomorphy,
+      ectomorphy: result.ectomorphy,
+    });
+    setShowQuiz(false);
+  }
+
+  const questions = [
+    { key: 'bodyBuild', label: 'Estrutura', min: 'Magra', max: 'Robusta' },
+    { key: 'muscle', label: 'Músculo', min: 'Pouco', max: 'Muito' },
+    { key: 'fat', label: 'Gordura', min: 'Pouca', max: 'Muita' },
+    { key: 'shoulders', label: 'Ombros', min: 'Estreitos', max: 'Largos' },
+    { key: 'arms', label: 'Braços', min: 'Finos', max: 'Grossos' },
+    { key: 'legs', label: 'Pernas', min: 'Finas', max: 'Grossas' },
+    { key: 'diet', label: 'Apetite', min: 'Pouco', max: 'Muito' },
+    { key: 'metabolism', label: 'Metabolismo', min: 'Rápido', max: 'Lento' },
+    { key: 'strength', label: 'Força', min: 'Fraca', max: 'Forte' },
+    { key: 'activity', label: 'Atividade', min: 'Ativo', max: 'Sedentário' },
+  ];
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="text-xs text-text-3 uppercase tracking-wider font-semibold">
+            🧬 Somatotipo
+          </div>
+          <div className="text-[10px] text-text-3 italic mt-0.5">
+            Base: Heath-Carter (1990)
+          </div>
+        </div>
+        <button
+          onClick={() => setShowQuiz((v) => !v)}
+          className="text-xs text-accent font-medium"
+        >
+          {showQuiz ? 'Cancelar' : 'Fazer teste'}
+        </button>
+      </div>
+
+      {showQuiz && (
+        <div className="space-y-3 mb-4 animate-fade-in">
+          {questions.map((q) => (
+            <div key={q.key}>
+              <div className="flex justify-between text-[10px] text-text-3 mb-1">
+                <span>{q.min}</span>
+                <span className="font-medium text-text-1">{q.label}</span>
+                <span>{q.max}</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={7}
+                step={1}
+                value={answers[q.key] ?? 4}
+                onChange={(e) =>
+                  setAnswers({ ...answers, [q.key]: parseInt(e.target.value) })
+                }
+                className="w-full accent-accent"
+              />
+            </div>
+          ))}
+          <Button fullWidth onClick={calculate}>
+            Calcular somatotipo
+          </Button>
+        </div>
+      )}
+
+      {lastResult && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-bg-2 rounded-xl p-2.5 text-center">
+              <div className="text-[9px] text-text-3 uppercase">Endo</div>
+              <div className="text-lg font-bold text-warn">
+                {lastResult.endomorphy}
+              </div>
+            </div>
+            <div className="bg-bg-2 rounded-xl p-2.5 text-center">
+              <div className="text-[9px] text-text-3 uppercase">Meso</div>
+              <div className="text-lg font-bold text-accent">
+                {lastResult.mesomorphy}
+              </div>
+            </div>
+            <div className="bg-bg-2 rounded-xl p-2.5 text-center">
+              <div className="text-[9px] text-text-3 uppercase">Ecto</div>
+              <div className="text-lg font-bold text-info">
+                {lastResult.ectomorphy}
+              </div>
+            </div>
+          </div>
+          <p className="text-[10px] text-text-3 italic">
+            Última: {new Date(lastResult.date).toLocaleDateString('pt-BR')}
+          </p>
+        </div>
+      )}
+
+      {!lastResult && !showQuiz && (
+        <p className="text-text-3 text-xs text-center py-3">
+          Faça o teste para descobrir seu tipo corporal
+        </p>
+      )}
+    </Card>
+  );
+}
+
+/* ══════════════ HELPERS ══════════════ */
+
+function computeStreak(timestamps: number[]) {
+  const days = new Set(
+    timestamps.map((t) => new Date(t).toISOString().slice(0, 10))
+  );
+  if (days.size === 0) return 0;
+
+  let streak = 0;
+  const cursor = new Date();
+  while (true) {
+    const key = cursor.toISOString().slice(0, 10);
+    if (days.has(key)) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else if (
+      streak === 0 &&
+      key === new Date().toISOString().slice(0, 10)
+    ) {
+      cursor.setDate(cursor.getDate() - 1);
+      continue;
+    } else {
+      break;
+    }
+  }
+  return streak;
 }

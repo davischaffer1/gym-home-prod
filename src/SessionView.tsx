@@ -4,6 +4,11 @@ import { db, type Exercise, type SetType } from './db';
 import RestTimer from './RestTimer';
 import SwipeableExerciseView from './SwipeableExerciseView';
 import {
+  saveActiveSession,
+  getActiveSession,
+  clearActiveSession,
+} from './activeSession';
+import {
   requestNotificationPermission,
   showActiveSessionNotification,
   updateActiveSessionNotification,
@@ -36,18 +41,38 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   const [notesDraft, setNotesDraft] = useState('');
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
 
-  // Cria a sessão + notificação
+  // Cria a sessão OU restaura uma ativa
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       await requestNotificationPermission();
+
+      // 👇 Tenta restaurar sessão ativa
+      const savedId = getActiveSession();
+      if (savedId) {
+        const existing = await db.sessions.get(savedId);
+        if (existing && !existing.finishedAt) {
+          if (!cancelled) {
+            setSessionId(savedId);
+            if (existing.notes !== undefined) setNotesDraft(existing.notes);
+          }
+          await showActiveSessionNotification('Treino', existing.startedAt);
+          return;
+        } else {
+          // Sessão antiga já fechada
+          clearActiveSession();
+        }
+      }
+
+      // Cria nova sessão
       const id = await db.sessions.add({
         workoutId,
         startedAt: Date.now(),
       });
       if (cancelled) return;
       setSessionId(id);
+      saveActiveSession(id);
       await showActiveSessionNotification('Treino', Date.now());
     })();
 
@@ -73,16 +98,19 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   );
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
 
+  // Sincroniza notas quando a sessão chega
   useEffect(() => {
     if (session?.notes !== undefined) {
       setNotesDraft(session.notes);
     }
   }, [session?.notes]);
 
+  // Ouve ações dos botões da notificação
   useEffect(() => {
     const cleanup = listenToNotificationActions(async (action) => {
       if (action === 'finish' || action === 'finish-session') {
         if (sessionId) {
+          await clearActiveSession();
           await clearActiveSessionNotification();
           await db.sessions.update(sessionId, { finishedAt: Date.now() });
           setFinished(true);
@@ -100,6 +128,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
 
   async function finish() {
     if (!sessionId) return;
+    await clearActiveSession();
     await clearActiveSessionNotification();
     await db.sessions.update(sessionId, { finishedAt: Date.now() });
     setFinished(true);
@@ -124,6 +153,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
     setShowNotes(false);
   }
 
+  // Returns condicionais
   if (sessionId === null || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center safe-top safe-bottom">
@@ -156,7 +186,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
 
   return (
     <div className="min-h-screen flex flex-col safe-top safe-bottom safe-x bg-bg-0">
-      {/* ── Header da sessão ── */}
+      {/* Header da sessão */}
       <div className="max-w-lg mx-auto w-full px-4 pt-3 pb-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -195,7 +225,6 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
           </div>
         </div>
 
-        {/* Notas */}
         {showNotes && (
           <div className="mt-3 bg-bg-1 border border-white/[0.06] rounded-2xl p-3 space-y-2 animate-slide-up">
             <textarea
@@ -222,10 +251,9 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
         )}
       </div>
 
-      {/* ── NAVEGAÇÃO DE EXERCÍCIOS ── */}
+      {/* Navegação de exercícios */}
       <div className="sticky top-0 z-30 bg-bg-0/90 backdrop-blur-xl border-b border-white/[0.05]">
         <div className="max-w-lg mx-auto px-4 py-2.5">
-          {/* Nome + contador + setas */}
           <div className="flex items-center justify-between gap-2">
             <button
               onClick={() =>
@@ -259,7 +287,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
             </button>
           </div>
 
-          {/* BARRAS DE PROGRESSO */}
+          {/* Barras de progresso */}
           <div className="flex gap-1 mt-2.5">
             {exercises.map((_, idx) => (
               <button
@@ -279,7 +307,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
         </div>
       </div>
 
-      {/* ── CARROSSEL DE EXERCÍCIOS ── */}
+      {/* Carrossel */}
       <div className="flex-1 overflow-y-auto pb-40">
         <div className="max-w-lg mx-auto pt-4">
           <SwipeableExerciseView
@@ -300,7 +328,6 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
         </div>
       </div>
 
-      {/* Timer de descanso */}
       {restSeconds !== null && (
         <RestTimer
           seconds={restSeconds}
@@ -360,6 +387,7 @@ function ExerciseCard({
   onSetAdded: (seconds: number) => void;
   isActive: boolean;
 }) {
+  // Estados
   const [reps, setReps] = useState('');
   const [weight, setWeight] = useState('');
   const [type, setType] = useState<SetType>('normal');
@@ -384,6 +412,7 @@ function ExerciseCard({
     return () => clearInterval(t);
   }, [tutStart]);
 
+  // Última série antes desta sessão
   const lastSet = useLiveQuery(
     async () => {
       try {
@@ -400,6 +429,7 @@ function ExerciseCard({
     [exercise.id, sessionId]
   );
 
+  // PR anterior
   const pr = useLiveQuery(
     async () => {
       try {
@@ -478,12 +508,14 @@ function ExerciseCard({
     [sessionId, exercise.id]
   );
 
+  // Derivados
   const allSets = (setsRaw ?? []).filter(
     (s) => s && typeof s.weight === 'number' && typeof s.reps === 'number'
   );
 
   const totalTut = allSets.reduce((acc, s) => acc + (s.tutSeconds ?? 0), 0);
 
+  // 1RM em tempo real
   const best1RM = useLiveQuery(
     async () => {
       if (allSets.length === 0) return null;
@@ -501,6 +533,7 @@ function ExerciseCard({
     [allSets.length, exercise.id]
   );
 
+  // PR latente
   const latentPR = useLiveQuery(
     async () => {
       const historical = await db.sets
@@ -515,6 +548,7 @@ function ExerciseCard({
     [exercise.id, sessionId, allSets.length]
   );
 
+  // Sugestão por RIR
   const rirSuggestion = useLiveQuery(
     async () => {
       if (!exercise.useRIR) return null;
@@ -546,6 +580,60 @@ function ExerciseCard({
     ]
   );
 
+  // 🎯 Sugestão de progressão (próxima série)
+  const nextRepGoal = useLiveQuery(
+    async () => {
+      if (allSets.length === 0) return null;
+
+      const targetMin = exercise.targetRepsMin;
+      const targetMax = exercise.targetRepsMax;
+      if (!targetMin || !targetMax) return null;
+
+      const last = allSets[allSets.length - 1];
+      const sameWeight = allSets.filter(
+        (s) => s.weight === last.weight && s.type !== 'warmup'
+      );
+
+      if (sameWeight.length === 0) return null;
+
+      // Bateu topo em todas as séries com essa carga → sugere subir
+      const allHitTop = sameWeight.every((s) => s.reps >= targetMax);
+      if (allHitTop) {
+        const step = last.weight < 100 ? 2.5 : 5;
+        const suggested = last.weight + step;
+        return {
+          type: 'up' as const,
+          weight: suggested,
+          reps: targetMin,
+          message: `🚀 Bora subir pra ${suggested} kg?`,
+          sub: `Bateu ${targetMax} reps em todas as séries.`,
+        };
+      }
+
+      // Ainda dentro da faixa → sugere +1 rep
+      const lastReps = last.reps;
+      if (lastReps < targetMax) {
+        const nextReps = lastReps + 1;
+        return {
+          type: 'rep' as const,
+          weight: last.weight,
+          reps: nextReps,
+          message: `💪 Bora tentar ${nextReps} reps com ${last.weight} kg?`,
+          sub: `Última foi ${lastReps} reps. Meta: ${targetMin}–${targetMax}.`,
+        };
+      }
+
+      return null;
+    },
+    [
+      allSets.length,
+      exercise.targetRepsMin,
+      exercise.targetRepsMax,
+      exercise.id,
+    ]
+  );
+
+  // Funções
   async function addSet(customReps?: number, customWeight?: number) {
     const r = customReps ?? parseInt(reps, 10);
     const w = customWeight ?? parseFloat(weight.replace(',', '.'));
@@ -672,7 +760,6 @@ function ExerciseCard({
   const targetMin = exercise.targetRepsMin;
   const targetMax = exercise.targetRepsMax;
 
-  // Se não é o exercício ativo, não renderiza
   if (!isActive) return null;
 
   return (
@@ -685,7 +772,7 @@ function ExerciseCard({
           : 'bg-bg-1 border-white/[0.06]'
       }`}
     >
-      {/* Badges no topo */}
+      {/* Badges */}
       <div className="flex flex-wrap gap-1.5">
         {beatPR && (
           <span className="text-[10px] bg-warn text-black px-2 py-0.5 rounded-full font-bold">
@@ -903,7 +990,9 @@ function ExerciseCard({
                     </span>
                   )}
                   {s.rpe !== undefined && (
-                    <span className="text-[10px] text-text-3">RPE {s.rpe}</span>
+                    <span className="text-[10px] text-text-3">
+                      RPE {s.rpe}
+                    </span>
                   )}
                   {fiber && (
                     <span
@@ -933,6 +1022,31 @@ function ExerciseCard({
             );
           })}
         </ul>
+      )}
+
+      {/* 🎯 Sugestão de progressão */}
+      {nextRepGoal && (
+        <button
+          type="button"
+          onClick={() => {
+            setReps(String(nextRepGoal.reps));
+            setWeight(String(nextRepGoal.weight));
+          }}
+          className="w-full bg-gradient-to-r from-accent/20 to-purple/20 border border-accent/40 rounded-2xl px-3 py-3 flex items-center gap-3 text-left active:scale-[0.98] transition-all"
+        >
+          <span className="text-2xl flex-shrink-0">
+            {nextRepGoal.type === 'up' ? '🚀' : '💪'}
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-accent">
+              {nextRepGoal.message}
+            </div>
+            <div className="text-[10px] text-text-3 mt-0.5">
+              {nextRepGoal.sub}
+            </div>
+          </div>
+          <span className="text-accent text-lg">›</span>
+        </button>
       )}
 
       {/* Repetir última */}
@@ -1169,14 +1283,22 @@ function SessionSummary({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <SummaryCard icon="⏱" value={`${durationMin} min`} label="Duração" />
+          <SummaryCard
+            icon="⏱"
+            value={`${durationMin} min`}
+            label="Duração"
+          />
           <SummaryCard
             icon="🏋️"
             value={String(uniqueExercises)}
             label="Exercícios"
           />
           <SummaryCard icon="🔁" value={String(totalSets)} label="Séries" />
-          <SummaryCard icon="🔢" value={String(totalReps)} label="Repetições" />
+          <SummaryCard
+            icon="🔢"
+            value={String(totalReps)}
+            label="Repetições"
+          />
           <SummaryCard
             icon="📦"
             value={`${totalVolume.toLocaleString('pt-BR')} kg`}

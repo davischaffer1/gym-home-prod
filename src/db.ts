@@ -32,6 +32,45 @@ export interface Profile {
   restSeconds: number; // ← novo (ex: 90)
 }
 
+// Adicione estas interfaces no topo (junto das outras)
+
+export interface BodyMeasurement {
+  id?: number;
+  date: number;           // timestamp
+  weightKg?: number;
+  bodyFatPct?: number;
+  chestCm?: number;
+  waistCm?: number;
+  hipCm?: number;
+  armCm?: number;         // braço (relaxado)
+  thighCm?: number;       // coxa
+  calfCm?: number;        // panturrilha
+  neckCm?: number;
+  shoulderCm?: number;
+  note?: string;
+}
+
+export interface DailyLog {
+  id?: number;
+  date: string;           // "YYYY-MM-DD"
+  waterMl?: number;
+  proteinG?: number;
+  caloriesKcal?: number;
+  sleepHours?: number;
+  readinessScore?: number; // 0-100
+  mood?: 1 | 2 | 3 | 4 | 5;
+  soreness?: 1 | 2 | 3 | 4 | 5; // 1=nenhuma, 5=muita
+  stress?: 1 | 2 | 3 | 4 | 5;
+}
+
+export interface SomatotypeResult {
+  id?: number;
+  date: number;
+  endomorphy: number;
+  mesomorphy: number;
+  ectomorphy: number;
+}
+
 export interface Exercise {
   id?: number;
   workoutId: number;
@@ -73,6 +112,7 @@ export interface SetLog {
 }
 
 class GymDB extends Dexie {
+
   workouts!: Table<Workout, number>;
   exercises!: Table<Exercise, number>;
   sessions!: Table<Session, number>;
@@ -80,6 +120,9 @@ class GymDB extends Dexie {
   profile!: Table<Profile, number>; // ← nova
   meta!: Table<{ id?: number; lastDeloadAt?: number }, number>; // 👈 novo
   achievements!: Table<UnlockedAchievement, number>;
+  bodyMeasurements!: Table<BodyMeasurement, number>;
+  dailyLogs!: Table<DailyLog, number>;
+  somatotypes!: Table<SomatotypeResult, number>;
 
   constructor() {
     super('gymDB');
@@ -120,6 +163,18 @@ class GymDB extends Dexie {
       profile: '++id',
       meta: '++id',
       achievements: '++id, achievementId, unlockedAt', // 👈 novo
+    });
+    this.version(6).stores({
+      workouts: '++id, name, createdAt',
+      exercises: '++id, workoutId, order, name',
+      sessions: '++id, workoutId, startedAt',
+      sets: '++id, sessionId, exerciseId, type',
+      profile: '++id',
+      meta: '++id',
+      achievements: '++id, achievementId, unlockedAt',
+      bodyMeasurements: '++id, date',
+      dailyLogs: '++id, date',
+      somatotypes: '++id, date',
     });
   }
 }
