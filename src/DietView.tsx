@@ -9,9 +9,14 @@ import {
   getOrCreateGoal,
   pct,
   getWeeklyAverages,
+  getWaterGoal,
+  getWater,
+  addWater,
+  resetWater,
 } from './nutrition';
 import FoodPicker from './FoodPicker';
 import NutritionGoalView from './NutritionGoalView';
+import NutritionAnalysisView from './NutritionAnalysisView';
 import { SubScreen, Card, Button, Badge } from './ui';
 import { StaggerItem, PunchButton } from './Motion';
 import { motion } from 'framer-motion';
@@ -33,14 +38,15 @@ export default function DietView({ onBack }: Props) {
   const [selectedDate, setSelectedDate] = useState(todayKey());
   const [pickerMeal, setPickerMeal] = useState<MealType | null>(null);
   const [showGoalView, setShowGoalView] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
   const goal = useLiveQuery(() => db.nutritionGoals.toCollection().first(), []);
   const summary = useLiveQuery(() => getDaySummary(selectedDate), [selectedDate]);
   const meals = useLiveQuery(() => getMealsByType(selectedDate), [selectedDate]);
   const weekly = useLiveQuery(() => getWeeklyAverages(7), []);
+  const water = useLiveQuery(() => getWater(selectedDate), [selectedDate]);
 
-  // Garante que existe uma meta
   useEffect(() => {
     if (
       profile?.weightKg &&
@@ -60,6 +66,10 @@ export default function DietView({ onBack }: Props) {
 
   if (showGoalView) {
     return <NutritionGoalView onBack={() => setShowGoalView(false)} />;
+  }
+
+  if (showAnalysis) {
+    return <NutritionAnalysisView onBack={() => setShowAnalysis(false)} />;
   }
 
   async function handleAddEntry(entry: {
@@ -108,7 +118,6 @@ export default function DietView({ onBack }: Props) {
     { weekday: 'short', day: '2-digit', month: 'short' }
   );
 
-  // Se não tem meta configurada, pede pra configurar
   if (!goal) {
     return (
       <SubScreen title="Dieta" onBack={onBack}>
@@ -130,18 +139,28 @@ export default function DietView({ onBack }: Props) {
   }
 
   const kcalPct = pct(summary?.kcal ?? 0, goal.targetKcal);
+  const waterGoal = profile?.weightKg ? profile.weightKg * 35 : 2500;
+  const waterPct = pct(water ?? 0, waterGoal);
 
   return (
     <SubScreen
       title="Dieta"
       onBack={onBack}
       action={
-        <button
-          onClick={() => setShowGoalView(true)}
-          className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-2"
-        >
-          ⚙️
-        </button>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setShowAnalysis(true)}
+            className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-2"
+          >
+            📊
+          </button>
+          <button
+            onClick={() => setShowGoalView(true)}
+            className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-2"
+          >
+            ⚙️
+          </button>
+        </div>
       }
     >
       {/* Date selector */}
@@ -196,7 +215,6 @@ export default function DietView({ onBack }: Props) {
             </div>
           </div>
 
-          {/* Barra */}
           <div className="w-full h-2 bg-white/[0.05] rounded-full overflow-hidden mb-4">
             <motion.div
               initial={{ width: 0 }}
@@ -208,33 +226,87 @@ export default function DietView({ onBack }: Props) {
             />
           </div>
 
-          {/* Macros */}
           <div className="grid grid-cols-4 gap-2 pt-3 border-t border-white/[0.04]">
             <MacroMini
               label="Prot"
               value={summary?.protein ?? 0}
               target={goal.targetProtein}
-              color="text-accent"
+              color="accent"
             />
             <MacroMini
               label="Carb"
               value={summary?.carbs ?? 0}
               target={goal.targetCarbs}
-              color="text-info"
+              color="info"
             />
             <MacroMini
               label="Gord"
               value={summary?.fat ?? 0}
               target={goal.targetFat}
-              color="text-sci"
+              color="sci"
             />
             <MacroMini
               label="Fibr"
               value={summary?.fiber ?? 0}
               target={goal.targetFiber}
-              color="text-success"
+              color="success"
             />
           </div>
+        </Card>
+      </StaggerItem>
+
+      {/* Água */}
+      <StaggerItem delay={0.03}>
+        <Card className="mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">💧</span>
+              <div>
+                <div className="text-xs font-bold font-display text-text-0">
+                  Água
+                </div>
+                <div className="text-[9px] text-text-3 font-mono-ui uppercase tracking-wider">
+                  Meta: {(waterGoal / 1000).toFixed(1)}L
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-bold font-mono-ui text-info">
+                {((water ?? 0) / 1000).toFixed(1)}L
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full h-2 bg-white/[0.05] rounded-full overflow-hidden mb-3">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, waterPct)}%` }}
+              transition={{ duration: 0.5 }}
+              className="h-full bg-info rounded-full"
+            />
+          </div>
+
+          <div className="grid grid-cols-4 gap-2">
+            {[200, 300, 500, 750].map((ml) => (
+              <PunchButton
+                key={ml}
+                onClick={() => addWater(selectedDate, ml)}
+                withHaptic
+                className="bg-info/10 hover:bg-info/20 border border-info/30 text-info py-2 rounded-xl text-xs font-mono-ui font-bold active:scale-95"
+              >
+                +{ml}
+              </PunchButton>
+            ))}
+          </div>
+
+          {(water ?? 0) > 0 && (
+            <button
+              onClick={() => resetWater(selectedDate)}
+              className="w-full mt-2 text-[10px] text-text-3 hover:text-danger font-mono-ui uppercase tracking-wider py-1"
+            >
+              Zerar água
+            </button>
+          )}
         </Card>
       </StaggerItem>
 
@@ -277,7 +349,6 @@ export default function DietView({ onBack }: Props) {
                 )}
               </div>
 
-              {/* Entries */}
               {mealData && mealData.entries.length > 0 && (
                 <div className="space-y-1.5 mb-2">
                   {mealData.entries.map((entry: any) => (
@@ -310,7 +381,6 @@ export default function DietView({ onBack }: Props) {
                 </div>
               )}
 
-              {/* Botão adicionar */}
               <PunchButton
                 onClick={() => setPickerMeal(mealType)}
                 className="w-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] border-dashed py-2.5 rounded-xl text-xs text-text-2 font-mono-ui uppercase tracking-wider active:scale-[0.98]"
@@ -342,7 +412,6 @@ export default function DietView({ onBack }: Props) {
         </StaggerItem>
       )}
 
-      {/* Food picker */}
       {pickerMeal && (
         <FoodPicker
           mealType={pickerMeal}
@@ -363,12 +432,25 @@ function MacroMini({
   label: string;
   value: number;
   target: number;
-  color: string;
+  color: 'accent' | 'info' | 'sci' | 'success';
 }) {
   const p = pct(value, target);
+  const textColor = {
+    accent: 'text-accent',
+    info: 'text-info',
+    sci: 'text-sci',
+    success: 'text-success',
+  }[color];
+  const bgColor = {
+    accent: 'bg-accent',
+    info: 'bg-info',
+    sci: 'bg-sci',
+    success: 'bg-success',
+  }[color];
+
   return (
     <div className="text-center">
-      <div className={`text-xs font-bold font-mono-ui ${color}`}>
+      <div className={`text-xs font-bold font-mono-ui ${textColor}`}>
         {Math.round(value)}
       </div>
       <div className="text-[8px] text-text-3 font-mono-ui uppercase tracking-wider mt-0.5">
@@ -376,15 +458,7 @@ function MacroMini({
       </div>
       <div className="w-full h-0.5 bg-white/[0.05] rounded-full overflow-hidden mt-1">
         <div
-          className={`h-full ${
-            color.includes('accent')
-              ? 'bg-accent'
-              : color.includes('info')
-              ? 'bg-info'
-              : color.includes('sci')
-              ? 'bg-sci'
-              : 'bg-success'
-          }`}
+          className={`h-full ${bgColor}`}
           style={{ width: `${Math.min(100, p)}%` }}
         />
       </div>
