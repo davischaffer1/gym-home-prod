@@ -9,18 +9,11 @@ import {
   calculateProteinTarget,
   calculateBMR,
   calculateTDEE,
-  calculateSomatotype,
 } from './sportsScience';
-import { estimate1RMPrecise } from './trainingScience';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts';
+  analyzeExerciseProgress,
+  estimate1RMPrecise,
+} from './trainingScience';
 
 interface Props {
   onBack: () => void;
@@ -29,7 +22,6 @@ interface Props {
 export default function ProfileView({ onBack }: Props) {
   const [tab, setTab] = useState<'perfil' | 'corporal' | 'config'>('perfil');
 
-  // ══════════════ HOOKS ══════════════
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
   const workouts = useLiveQuery(() => db.workouts.toArray(), []);
   const sessions = useLiveQuery(async () => {
@@ -41,30 +33,13 @@ export default function ProfileView({ onBack }: Props) {
   const sets = useLiveQuery(() => db.sets.toArray(), []);
   const exercises = useLiveQuery(() => db.exercises.toArray(), []);
 
-  // ══════════════ ✅ FUNÇÃO QUE CRIA/ATUALIZA ══════════════
-  async function saveProfileField(field: string, value: any) {
-    const existing = await db.profile.toCollection().first();
+  // ══════════════ STATS GERAIS ══════════════
 
-    if (existing?.id) {
-      await db.profile.update(existing.id, { [field]: value });
-    } else {
-      await db.profile.add({
-        name: '',
-        weightKg: 75,
-        heightCm: 175,
-        age: 30,
-        sex: 'M',
-        restSeconds: 90,
-        updatedAt: Date.now(),
-        [field]: value,
-      });
-    }
-  }
-
-  // ══════════════ CÁLCULOS ══════════════
+  const now = Date.now();
   const streak = sessions ? computeStreak(sessions.map((s) => s.startedAt)) : 0;
   const totalSessions = sessions?.length ?? 0;
-  const totalVolume = sets?.reduce((a, s) => a + s.reps * s.weight, 0) ?? 0;
+  const totalVolume =
+    sets?.reduce((a, s) => a + s.reps * s.weight, 0) ?? 0;
   const totalMinutes =
     sessions?.reduce(
       (a, s) =>
@@ -75,7 +50,8 @@ export default function ProfileView({ onBack }: Props) {
       0
     ) ?? 0;
 
-  // ISR
+  // ══════════════ ISR — ÍNDICE DE FORÇA RELATIVA ══════════════
+
   const isr = (() => {
     if (!sets || !exercises || !profile?.weightKg) return null;
 
@@ -99,7 +75,8 @@ export default function ProfileView({ onBack }: Props) {
     return calculateISR(bench, squat, dead, profile.weightKg);
   })();
 
-  // Percentis
+  // ══════════════ PERCENTIS POR EXERCÍCIO ══════════════
+
   const percentiles = (() => {
     if (!sets || !exercises || !profile?.weightKg) return [];
 
@@ -107,7 +84,9 @@ export default function ProfileView({ onBack }: Props) {
     const results: ReturnType<typeof getStrengthPercentile>[] = [];
 
     for (const keyword of TOP_EXERCISES) {
-      const ex = exercises.find((e) => e.name.toLowerCase().includes(keyword));
+      const ex = exercises.find((e) =>
+        e.name.toLowerCase().includes(keyword)
+      );
       if (!ex) continue;
 
       const exSets = sets.filter((s) => s.exerciseId === ex.id);
@@ -125,10 +104,14 @@ export default function ProfileView({ onBack }: Props) {
     return results;
   })();
 
-  // Metas diárias — assume 75 kg se não tiver perfil
-  const effectiveWeight = profile?.weightKg ?? 75;
-  const waterTarget = calculateWaterTarget(effectiveWeight);
-  const proteinTarget = calculateProteinTarget(effectiveWeight, 'hipertrofia');
+  // ══════════════ METAS DIÁRIAS ══════════════
+
+  const waterTarget = profile?.weightKg
+    ? calculateWaterTarget(profile.weightKg)
+    : 0;
+  const proteinTarget = profile?.weightKg
+    ? calculateProteinTarget(profile.weightKg, 'hipertrofia')
+    : { min: 0, max: 0 };
 
   const bmr =
     profile?.weightKg && profile?.heightCm && profile?.age && profile?.sex
@@ -142,7 +125,6 @@ export default function ProfileView({ onBack }: Props) {
 
   const tdee = bmr ? calculateTDEE(bmr, 'moderado') : 0;
 
-  // ══════════════ JSX ══════════════
   return (
     <SubScreen title="Perfil" onBack={onBack}>
       {/* Tabs */}
@@ -166,9 +148,12 @@ export default function ProfileView({ onBack }: Props) {
         ))}
       </div>
 
-      {/* ══ PERFIL ══ */}
+      {/* ══════════════════════════════════════════ */}
+      {/* ABA: PERFIL */}
+      {/* ══════════════════════════════════════════ */}
       {tab === 'perfil' && (
         <div className="space-y-5">
+          {/* Header pessoal */}
           <Card>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-2xl bg-accent-dim flex items-center justify-center text-2xl font-bold text-accent flex-shrink-0">
@@ -200,6 +185,7 @@ export default function ProfileView({ onBack }: Props) {
             </div>
           </Card>
 
+          {/* Stats principais */}
           <div className="grid grid-cols-2 gap-2">
             <MiniStat icon="🔥" value={String(streak)} label="Streak" />
             <MiniStat icon="🏋️" value={String(totalSessions)} label="Treinos" />
@@ -215,6 +201,7 @@ export default function ProfileView({ onBack }: Props) {
             />
           </div>
 
+          {/* ISR */}
           {isr && (
             <Card>
               <div className="flex items-center justify-between mb-3">
@@ -233,6 +220,7 @@ export default function ProfileView({ onBack }: Props) {
                   <div className="text-[10px] text-text-3">× peso</div>
                 </div>
               </div>
+
               <div className="flex items-center gap-2 mb-2">
                 <div className="text-sm font-semibold text-text-0">
                   {isr.level}
@@ -243,23 +231,30 @@ export default function ProfileView({ onBack }: Props) {
                   </span>
                 )}
               </div>
+
               <div className="w-full h-2 bg-white/[0.05] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-accent to-accent-hover transition-all duration-500 rounded-full"
                   style={{ width: `${isr.percentToNext}%` }}
                 />
               </div>
+
               <div className="text-[10px] text-text-3 mt-2">
                 Total dos 3 grandes: {isr.total1RM} kg
               </div>
             </Card>
           )}
 
+          {/* Percentis */}
           {percentiles.length > 0 && (
             <Card>
               <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-3">
                 💪 Força relativa
               </div>
+              <div className="text-[10px] text-text-3 mb-3 -mt-2">
+                Base: Strength Level standards
+              </div>
+
               <div className="space-y-3">
                 {percentiles.map((p, i) => (
                   <div key={i}>
@@ -268,6 +263,9 @@ export default function ProfileView({ onBack }: Props) {
                       <div className="text-xs">
                         <span className="font-bold text-accent">
                           {p?.percentile}%
+                        </span>
+                        <span className="text-text-3 ml-1 text-[10px]">
+                          · top {100 - (p?.percentile ?? 0)}%
                         </span>
                       </div>
                     </div>
@@ -278,7 +276,7 @@ export default function ProfileView({ onBack }: Props) {
                       />
                     </div>
                     <div className="text-[10px] text-text-3 mt-0.5">
-                      {p?.level} · {p?.ratio}× peso
+                      {p?.level} · {p?.ratio}× peso corporal
                     </div>
                   </div>
                 ))}
@@ -286,10 +284,11 @@ export default function ProfileView({ onBack }: Props) {
             </Card>
           )}
 
+          {/* Se não tem dados */}
           {!isr && percentiles.length === 0 && (
             <Card variant="subtle">
               <p className="text-text-3 text-sm text-center py-4">
-                Complete treinos com supino, agachamento e terra para ver
+                Complete treinos com supino, agachamento e terra para ver suas
                 métricas de força.
               </p>
             </Card>
@@ -297,28 +296,12 @@ export default function ProfileView({ onBack }: Props) {
         </div>
       )}
 
-      {/* ══ CORPORAL ══ */}
+      {/* ══════════════════════════════════════════ */}
+      {/* ABA: CORPORAL */}
+      {/* ══════════════════════════════════════════ */}
       {tab === 'corporal' && (
         <div className="space-y-5">
-          {(!profile?.weightKg ||
-            !profile?.heightCm ||
-            !profile?.age ||
-            !profile?.sex) && (
-            <Card variant="subtle">
-              <div className="flex items-start gap-3">
-                <span className="text-lg">⚠️</span>
-                <div className="text-xs text-text-2">
-                  <strong className="text-warn">Perfil incompleto.</strong>{' '}
-                  Preencha peso, altura, idade e sexo na aba{' '}
-                  <strong>⚙️ Config</strong> para cálculos precisos.{' '}
-                  <span className="text-text-3">
-                    (Usando peso padrão de 75 kg)
-                  </span>
-                </div>
-              </div>
-            </Card>
-          )}
-
+          {/* Peso atual */}
           {profile?.weightKg && (
             <Card>
               <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-2">
@@ -330,23 +313,34 @@ export default function ProfileView({ onBack }: Props) {
             </Card>
           )}
 
+          {/* Metas diárias */}
           <Card>
             <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-3">
               🎯 Metas diárias
             </div>
+
             <div className="space-y-3">
-              <DailyTarget
-                icon="💧"
-                title="Hidratação"
-                value={`${(waterTarget / 1000).toFixed(1)} L`}
-                reference="ACSM (2007)"
-              />
-              <DailyTarget
-                icon="🥩"
-                title="Proteína"
-                value={`${proteinTarget.min}–${proteinTarget.max} g`}
-                reference="Morton et al. (2018)"
-              />
+              {/* Hidratação */}
+              {waterTarget > 0 && (
+                <DailyTarget
+                  icon="💧"
+                  title="Hidratação"
+                  value={`${(waterTarget / 1000).toFixed(1)} L`}
+                  reference="ACSM (2007)"
+                />
+              )}
+
+              {/* Proteína */}
+              {proteinTarget.max > 0 && (
+                <DailyTarget
+                  icon="🥩"
+                  title="Proteína"
+                  value={`${proteinTarget.min}–${proteinTarget.max} g`}
+                  reference="Morton et al. (2018)"
+                />
+              )}
+
+              {/* Calorias */}
               {tdee > 0 && (
                 <DailyTarget
                   icon="🔥"
@@ -359,12 +353,17 @@ export default function ProfileView({ onBack }: Props) {
             </div>
           </Card>
 
+          {/* Medidas corporais */}
           <BodyMeasurements />
+
+          {/* Somatotipo */}
           <SomatotypeCard />
         </div>
       )}
 
-      {/* ══ CONFIG ══ */}
+      {/* ══════════════════════════════════════════ */}
+      {/* ABA: CONFIG */}
+      {/* ══════════════════════════════════════════ */}
       {tab === 'config' && (
         <div className="space-y-5">
           <Card>
@@ -373,60 +372,50 @@ export default function ProfileView({ onBack }: Props) {
               <ProfileField
                 label="Nome"
                 value={profile?.name ?? ''}
-                onSave={(v) => saveProfileField('name', v)}
+                onSave={(v) =>
+                  db.profile.toCollection().modify({ name: v })
+                }
               />
               <ProfileField
                 label="Peso (kg)"
                 type="decimal"
                 value={String(profile?.weightKg ?? '')}
-                onSave={(v) => saveProfileField('weightKg', parseFloat(v) || 0)}
+                onSave={(v) =>
+                  db.profile
+                    .toCollection()
+                    .modify({ weightKg: parseFloat(v) || 0 })
+                }
               />
               <ProfileField
                 label="Altura (cm)"
                 type="numeric"
                 value={String(profile?.heightCm ?? '')}
-                onSave={(v) => saveProfileField('heightCm', parseInt(v) || 0)}
+                onSave={(v) =>
+                  db.profile
+                    .toCollection()
+                    .modify({ heightCm: parseInt(v) || 0 })
+                }
               />
               <ProfileField
                 label="Idade"
                 type="numeric"
                 value={String(profile?.age ?? '')}
-                onSave={(v) => saveProfileField('age', parseInt(v) || 0)}
+                onSave={(v) =>
+                  db.profile
+                    .toCollection()
+                    .modify({ age: parseInt(v) || 0 })
+                }
               />
               <ProfileField
                 label="Descanso padrão (s)"
                 type="numeric"
                 value={String(profile?.restSeconds ?? 90)}
                 onSave={(v) =>
-                  saveProfileField('restSeconds', parseInt(v) || 90)
+                  db.profile
+                    .toCollection()
+                    .modify({ restSeconds: parseInt(v) || 90 })
                 }
               />
-            </div>
-          </Card>
-
-          <Card>
-            <SectionTitle>Sexo</SectionTitle>
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              <button
-                onClick={() => saveProfileField('sex', 'M')}
-                className={`py-3 rounded-xl text-sm font-semibold transition-all ${
-                  profile?.sex === 'M'
-                    ? 'bg-accent text-black'
-                    : 'bg-bg-2 border border-white/[0.06] text-text-2 hover:bg-bg-3'
-                }`}
-              >
-                Masculino
-              </button>
-              <button
-                onClick={() => saveProfileField('sex', 'F')}
-                className={`py-3 rounded-xl text-sm font-semibold transition-all ${
-                  profile?.sex === 'F'
-                    ? 'bg-accent text-black'
-                    : 'bg-bg-2 border border-white/[0.06] text-text-2 hover:bg-bg-3'
-                }`}
-              >
-                Feminino
-              </button>
             </div>
           </Card>
 
@@ -449,7 +438,7 @@ export default function ProfileView({ onBack }: Props) {
   );
 }
 
-/* ══════════════ COMPONENTES ══════════════ */
+/* ══════════════ COMPONENTES AUXILIARES ══════════════ */
 
 function MiniStat({
   icon,
@@ -560,7 +549,9 @@ function ProfileField({
           }}
           className="w-full mt-1 text-left bg-bg-2 border border-white/[0.04] rounded-xl px-3 py-2.5 hover:bg-bg-3 active:scale-[0.99] transition-all"
         >
-          <span className="text-sm text-text-1">{value || '—'}</span>
+          <span className="text-sm text-text-1">
+            {value || '—'}
+          </span>
           <span className="text-text-3 text-xs float-right">✎</span>
         </button>
       )}
@@ -568,7 +559,7 @@ function ProfileField({
   );
 }
 
-/* ══════════════ MEDIDAS ══════════════ */
+/* ══════════════ MEDIDAS CORPORAIS ══════════════ */
 
 function BodyMeasurements() {
   const [showForm, setShowForm] = useState(false);
@@ -616,18 +607,6 @@ function BodyMeasurements() {
     });
     setShowForm(false);
   }
-
-  const weightPoints =
-    measurements
-      ?.filter((m) => m.weightKg !== undefined)
-      .map((m) => ({
-        date: new Date(m.date).toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-        }),
-        weight: m.weightKg,
-      }))
-      .reverse() ?? [];
 
   return (
     <Card>
@@ -710,83 +689,33 @@ function BodyMeasurements() {
       )}
 
       {measurements && measurements.length > 0 && (
-        <>
-          <div className="space-y-2">
-            {measurements.slice(0, 3).map((m) => (
-              <div
-                key={m.id}
-                className="bg-bg-2 border border-white/[0.04] rounded-xl px-3 py-2"
-              >
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-medium text-text-1">
-                    {new Date(m.date).toLocaleDateString('pt-BR')}
-                  </span>
-                  <button
-                    onClick={() => db.bodyMeasurements.delete(m.id!)}
-                    className="text-danger/70 text-xs"
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="text-[10px] text-text-3 flex flex-wrap gap-2">
-                  {m.weightKg && <span>⚖️ {m.weightKg} kg</span>}
-                  {m.bodyFatPct && <span>📊 {m.bodyFatPct}%</span>}
-                  {m.waistCm && <span>〰️ Cintura {m.waistCm}cm</span>}
-                  {m.armCm && <span>💪 Braço {m.armCm}cm</span>}
-                  {m.thighCm && <span>🦵 Coxa {m.thighCm}cm</span>}
-                </div>
+        <div className="space-y-2">
+          {measurements.slice(0, 3).map((m) => (
+            <div
+              key={m.id}
+              className="bg-bg-2 border border-white/[0.04] rounded-xl px-3 py-2"
+            >
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-medium text-text-1">
+                  {new Date(m.date).toLocaleDateString('pt-BR')}
+                </span>
+                <button
+                  onClick={() => db.bodyMeasurements.delete(m.id!)}
+                  className="text-danger/70 text-xs"
+                >
+                  ×
+                </button>
               </div>
-            ))}
-          </div>
-
-          {weightPoints.length >= 2 && (
-            <div className="mt-4 pt-4 border-t border-white/[0.04]">
-              <div className="text-[10px] text-text-3 uppercase tracking-wider font-semibold mb-2">
-                Evolução de peso
-              </div>
-              <div style={{ width: '100%', height: 140 }}>
-                <ResponsiveContainer>
-                  <LineChart data={weightPoints}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="#1f1f26"
-                    />
-                    <XAxis
-                      dataKey="date"
-                      stroke="#52525b"
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      stroke="#52525b"
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={false}
-                      width={32}
-                      domain={['dataMin - 2', 'dataMax + 2']}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: '#0f0f12',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: 12,
-                        fontSize: 12,
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="weight"
-                      stroke="#22d3a8"
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="text-[10px] text-text-3 flex flex-wrap gap-2">
+                {m.weightKg && <span>⚖️ {m.weightKg} kg</span>}
+                {m.bodyFatPct && <span>📊 {m.bodyFatPct}%</span>}
+                {m.waistCm && <span>〰️ Cintura {m.waistCm}cm</span>}
+                {m.armCm && <span>💪 Braço {m.armCm}cm</span>}
+                {m.thighCm && <span>🦵 Coxa {m.thighCm}cm</span>}
               </div>
             </div>
-          )}
-        </>
+          ))}
+        </div>
       )}
     </Card>
   );
@@ -838,6 +767,7 @@ function SomatotypeCard() {
   );
 
   async function calculate() {
+    const { calculateSomatotype } = await import('./sportsScience');
     const result = calculateSomatotype(answers as any);
     await db.somatotypes.add({
       date: Date.now(),
@@ -849,16 +779,16 @@ function SomatotypeCard() {
   }
 
   const questions = [
-    { key: 'bodyBuild', label: 'Estrutura', min: 'Magra', max: 'Robusta' },
-    { key: 'muscle', label: 'Músculo', min: 'Pouco', max: 'Muito' },
-    { key: 'fat', label: 'Gordura', min: 'Pouca', max: 'Muita' },
+    { key: 'bodyBuild', label: 'Estrutura corporal', min: 'Magra', max: 'Robusta' },
+    { key: 'muscle', label: 'Massa muscular', min: 'Pouca', max: 'Muita' },
+    { key: 'fat', label: 'Gordura corporal', min: 'Pouca', max: 'Muita' },
     { key: 'shoulders', label: 'Ombros', min: 'Estreitos', max: 'Largos' },
     { key: 'arms', label: 'Braços', min: 'Finos', max: 'Grossos' },
     { key: 'legs', label: 'Pernas', min: 'Finas', max: 'Grossas' },
-    { key: 'diet', label: 'Apetite', min: 'Pouco', max: 'Muito' },
+    { key: 'diet', label: 'Apetite', min: 'Como pouco', max: 'Como muito' },
     { key: 'metabolism', label: 'Metabolismo', min: 'Rápido', max: 'Lento' },
-    { key: 'strength', label: 'Força', min: 'Fraca', max: 'Forte' },
-    { key: 'activity', label: 'Atividade', min: 'Ativo', max: 'Sedentário' },
+    { key: 'strength', label: 'Força natural', min: 'Fraca', max: 'Forte' },
+    { key: 'activity', label: 'Nível de atividade', min: 'Ativo', max: 'Sedentário' },
   ];
 
   return (
@@ -931,7 +861,8 @@ function SomatotypeCard() {
             </div>
           </div>
           <p className="text-[10px] text-text-3 italic">
-            Última: {new Date(lastResult.date).toLocaleDateString('pt-BR')}
+            Última avaliação:{' '}
+            {new Date(lastResult.date).toLocaleDateString('pt-BR')}
           </p>
         </div>
       )}
@@ -960,10 +891,7 @@ function computeStreak(timestamps: number[]) {
     if (days.has(key)) {
       streak++;
       cursor.setDate(cursor.getDate() - 1);
-    } else if (
-      streak === 0 &&
-      key === new Date().toISOString().slice(0, 10)
-    ) {
+    } else if (streak === 0 && key === new Date().toISOString().slice(0, 10)) {
       cursor.setDate(cursor.getDate() - 1);
       continue;
     } else {

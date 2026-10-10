@@ -32,45 +32,6 @@ export interface Profile {
   restSeconds: number; // ← novo (ex: 90)
 }
 
-// Adicione estas interfaces no topo (junto das outras)
-
-export interface BodyMeasurement {
-  id?: number;
-  date: number;           // timestamp
-  weightKg?: number;
-  bodyFatPct?: number;
-  chestCm?: number;
-  waistCm?: number;
-  hipCm?: number;
-  armCm?: number;         // braço (relaxado)
-  thighCm?: number;       // coxa
-  calfCm?: number;        // panturrilha
-  neckCm?: number;
-  shoulderCm?: number;
-  note?: string;
-}
-
-export interface DailyLog {
-  id?: number;
-  date: string;           // "YYYY-MM-DD"
-  waterMl?: number;
-  proteinG?: number;
-  caloriesKcal?: number;
-  sleepHours?: number;
-  readinessScore?: number; // 0-100
-  mood?: 1 | 2 | 3 | 4 | 5;
-  soreness?: 1 | 2 | 3 | 4 | 5; // 1=nenhuma, 5=muita
-  stress?: 1 | 2 | 3 | 4 | 5;
-}
-
-export interface SomatotypeResult {
-  id?: number;
-  date: number;
-  endomorphy: number;
-  mesomorphy: number;
-  ectomorphy: number;
-}
-
 export interface Exercise {
   id?: number;
   workoutId: number;
@@ -109,6 +70,45 @@ export interface SetLog {
   tutSeconds?: number; // tempo sob tensão (seg)
   rpe?: number; // 1-10 (opcional)
   note?: string; // nota rápida da série
+}
+
+// Adicione estas interfaces no topo (junto das outras)
+
+export interface BodyMeasurement {
+  id?: number;
+  date: number;           // timestamp
+  weightKg?: number;
+  bodyFatPct?: number;
+  chestCm?: number;
+  waistCm?: number;
+  hipCm?: number;
+  armCm?: number;         // braço (relaxado)
+  thighCm?: number;       // coxa
+  calfCm?: number;        // panturrilha
+  neckCm?: number;
+  shoulderCm?: number;
+  note?: string;
+}
+
+export interface DailyLog {
+  id?: number;
+  date: string;           // "YYYY-MM-DD"
+  waterMl?: number;
+  proteinG?: number;
+  caloriesKcal?: number;
+  sleepHours?: number;
+  readinessScore?: number; // 0-100
+  mood?: 1 | 2 | 3 | 4 | 5;
+  soreness?: 1 | 2 | 3 | 4 | 5; // 1=nenhuma, 5=muita
+  stress?: 1 | 2 | 3 | 4 | 5;
+}
+
+export interface SomatotypeResult {
+  id?: number;
+  date: number;
+  endomorphy: number;
+  mesomorphy: number;
+  ectomorphy: number;
 }
 
 class GymDB extends Dexie {
