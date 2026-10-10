@@ -10,11 +10,13 @@ import AchievementsView from './AchievementsView';
 import CalendarView from './CalendarView';
 import ExerciseProgressView from './ExerciseProgressView';
 import RecoveryView from './RecoveryView';
+import DietView from './DietView';
 import { useSwipe } from './useSwipe';
 import { getActiveSession, clearActiveSession } from './activeSession';
 import { StaggerItem, PunchButton } from './Motion';
 import { Sparkline } from './ForceCharts';
 import RecoveryRing from './RecoveryRing';
+import { seedFoodDatabase } from './foodDatabase';
 import {
   calculateRecoveryByGroup,
   suggestWorkoutToday,
@@ -30,7 +32,14 @@ import {
   Badge,
 } from './ui';
 
-type Tab = 'home' | 'stats' | 'evolution' | 'agenda' | 'profile' | 'new';
+type Tab =
+  | 'home'
+  | 'stats'
+  | 'evolution'
+  | 'diet'
+  | 'agenda'
+  | 'profile'
+  | 'new';
 type SubView =
   | null
   | 'history'
@@ -38,7 +47,7 @@ type SubView =
   | 'achievements'
   | 'recovery';
 
-const TABS: Tab[] = ['home', 'stats', 'evolution', 'agenda', 'profile'];
+const TABS: Tab[] = ['home', 'stats', 'evolution', 'diet', 'agenda', 'profile'];
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('home');
@@ -53,6 +62,16 @@ export default function App() {
   const [editingWorkoutId, setEditingWorkoutId] = useState<number | null>(null);
   const [editingWorkoutName, setEditingWorkoutName] = useState('');
 
+  // Seed da base de alimentos
+  useEffect(() => {
+    seedFoodDatabase(db).then((res) => {
+      if (res.seeded) {
+        console.log(`🍎 Base de alimentos populada: ${res.count} itens`);
+      }
+    });
+  }, []);
+
+  // Restaura sessão ativa
   useEffect(() => {
     (async () => {
       const activeId = getActiveSession();
@@ -83,16 +102,13 @@ export default function App() {
   );
 
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
-
   const sessions = useLiveQuery(async () => {
     const all = await db.sessions
       .filter((s) => s.finishedAt !== undefined)
       .toArray();
     return all.sort((a, b) => b.startedAt - a.startedAt);
   }, []);
-
   const sets = useLiveQuery(() => db.sets.toArray(), []);
-
   const recovery = useLiveQuery(() => calculateRecoveryByGroup(), []);
 
   const currentIdx = TABS.indexOf(tab === 'new' ? 'home' : tab);
@@ -107,11 +123,8 @@ export default function App() {
     },
   });
 
-  // ══════════════ COCKPIT DATA ══════════════
-
+  // ── Cockpit data ──
   const streak = sessions ? computeStreak(sessions.map((s) => s.startedAt)) : 0;
-  const totalSessions = sessions?.length ?? 0;
-
   const lastSession = sessions?.[0];
   const lastVolume = lastSession
     ? sets
@@ -119,7 +132,6 @@ export default function App() {
         .reduce((a, s) => a + s.reps * s.weight, 0) ?? 0
     : 0;
 
-  // Sparkline de volume das últimas 7 sessões
   const volumeSeries = (sessions ?? [])
     .slice(0, 7)
     .map((s) =>
@@ -129,7 +141,6 @@ export default function App() {
     )
     .reverse();
 
-  // Recovery ring (média da recuperação dos grupos treinados recentemente)
   const recentGroups = recovery?.filter((r) => r.hoursSince < 72) ?? [];
   const avgRecovery =
     recentGroups.length > 0
@@ -138,13 +149,10 @@ export default function App() {
         )
       : 100;
 
-  // Sugestão de treino do dia
   const suggestion = recovery ? suggestWorkoutToday(recovery) : null;
 
-  // Próximo treino: por sugestão ou primeiro da lista
   const nextWorkout = (() => {
     if (!suggestion || !workouts || workouts.length === 0) return null;
-    // Sugere o treino cujo nome menciona um grupo recuperado
     const recommended = suggestion.recommended.map((g) => g.toLowerCase());
     const match = workouts.find((w) =>
       recommended.some((g) => w.name.toLowerCase().includes(g))
@@ -152,8 +160,7 @@ export default function App() {
     return match ?? workouts[0];
   })();
 
-  // ══════════════ AÇÕES ══════════════
-
+  // ── Ações ──
   async function createWorkout() {
     if (!workoutName.trim()) return;
     const id = await db.workouts.add({
@@ -261,7 +268,7 @@ export default function App() {
     await db.exercises.update(next.id!, { order: current.order });
   }
 
-  // ══════════════ SESSÃO ══════════════
+  // Sessão
   if (inSession && selectedWorkout) {
     return (
       <SessionView
@@ -276,17 +283,15 @@ export default function App() {
     );
   }
 
-  // ══════════════ SUB-TELAS ══════════════
-  if (subView === 'history')
-    return <HistoryView onBack={() => setSubView(null)} />;
-  if (subView === 'progress')
-    return <DashboardView onBack={() => setSubView(null)} />;
+  // Sub-telas
+  if (subView === 'history') return <HistoryView onBack={() => setSubView(null)} />;
+  if (subView === 'progress') return <DashboardView onBack={() => setSubView(null)} />;
   if (subView === 'achievements')
     return <AchievementsView onBack={() => setSubView(null)} />;
   if (subView === 'recovery')
     return <RecoveryView onBack={() => setSubView(null)} />;
 
-  // ══════════════ BOTTOM NAV ══════════════
+  // Bottom nav
   const bottomNav = (
     <BottomNav
       activeTab={tab}
@@ -295,13 +300,14 @@ export default function App() {
         { id: 'home', label: 'Início', icon: 'home' },
         { id: 'stats', label: 'Análise', icon: 'chart' },
         { id: 'evolution', label: 'Evolução', icon: 'trend' },
+        { id: 'diet', label: 'Dieta', icon: 'apple' },
         { id: 'agenda', label: 'Agenda', icon: 'calendar' },
         { id: 'profile', label: 'Perfil', icon: 'user' },
       ]}
     />
   );
 
-  // ══════════════ TAB: HOME — COCKPIT ══════════════
+  // ═══ HOME ═══
   if (tab === 'home') {
     return (
       <>
@@ -325,12 +331,9 @@ export default function App() {
           }
           bottomNav={bottomNav}
         >
-          {/* ═══ COCKPIT ═══ */}
           <div className="space-y-4">
-            {/* Row 1: Streak + Recovery Ring */}
             <StaggerItem delay={0}>
               <div className="grid grid-cols-2 gap-3">
-                {/* Streak */}
                 <Card className="!p-4 flex flex-col justify-between">
                   <div>
                     <div className="text-[9px] text-text-3 uppercase tracking-[0.15em] font-mono-ui">
@@ -340,9 +343,7 @@ export default function App() {
                       <span className="text-4xl font-bold font-mono-ui text-text-0 leading-none">
                         {streak}
                       </span>
-                      <span className="text-sm text-text-3 font-mono-ui">
-                        🔥
-                      </span>
+                      <span className="text-sm">🔥</span>
                     </div>
                   </div>
                   <div className="text-[10px] text-text-3 mt-3 font-mono-ui uppercase tracking-wider">
@@ -354,7 +355,6 @@ export default function App() {
                   </div>
                 </Card>
 
-                {/* Recovery Ring */}
                 <Card className="!p-4 flex flex-col items-center justify-center">
                   <RecoveryRing
                     score={avgRecovery}
@@ -366,7 +366,6 @@ export default function App() {
               </div>
             </StaggerItem>
 
-            {/* Row 2: Próximo Treino */}
             {nextWorkout && (
               <StaggerItem delay={0.05}>
                 <Card variant="accent" glow className="!p-5">
@@ -407,7 +406,6 @@ export default function App() {
               </StaggerItem>
             )}
 
-            {/* Row 3: Última sessão + Sparkline */}
             {lastSession && (
               <StaggerItem delay={0.1}>
                 <Card className="!p-4">
@@ -448,36 +446,41 @@ export default function App() {
               </StaggerItem>
             )}
 
-            {/* Row 4: Atalhos Rápidos */}
             <StaggerItem delay={0.15}>
-              <div className="grid grid-cols-3 gap-2">
-                <Card
-                  interactive
-                  onClick={() => setTab('stats')}
-                  className="!p-3.5"
-                >
-                  <span className="text-xl">📊</span>
-                  <div className="text-[10px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
+              <div className="grid grid-cols-4 gap-2">
+                <Card interactive onClick={() => setTab('stats')} className="!p-3">
+                  <span className="text-lg">📊</span>
+                  <div className="text-[9px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Análise
                   </div>
                 </Card>
                 <Card
                   interactive
                   onClick={() => setSubView('recovery')}
-                  className="!p-3.5"
+                  className="!p-3"
                 >
-                  <span className="text-xl">🧬</span>
-                  <div className="text-[10px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
+                  <span className="text-lg">🧬</span>
+                  <div className="text-[9px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Recovery
                   </div>
                 </Card>
                 <Card
                   interactive
-                  onClick={() => setSubView('history')}
-                  className="!p-3.5"
+                  onClick={() => setTab('diet')}
+                  className="!p-3"
                 >
-                  <span className="text-xl">📜</span>
-                  <div className="text-[10px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
+                  <span className="text-lg">🍽️</span>
+                  <div className="text-[9px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
+                    Dieta
+                  </div>
+                </Card>
+                <Card
+                  interactive
+                  onClick={() => setSubView('history')}
+                  className="!p-3"
+                >
+                  <span className="text-lg">📜</span>
+                  <div className="text-[9px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Histórico
                   </div>
                 </Card>
@@ -485,7 +488,7 @@ export default function App() {
             </StaggerItem>
           </div>
 
-          {/* ═══ MEUS TREINOS ═══ */}
+          {/* Meus treinos */}
           <div className="mt-6">
             <SectionTitle
               action={
@@ -562,9 +565,7 @@ export default function App() {
                         </div>
                         <span
                           className={`text-lg transition-transform ${
-                            isSelected
-                              ? 'rotate-90 text-accent'
-                              : 'text-text-3'
+                            isSelected ? 'rotate-90 text-accent' : 'text-text-3'
                           }`}
                         >
                           {isSelected ? '▾' : '›'}
@@ -647,9 +648,7 @@ export default function App() {
                             </Button>
                             <Button
                               onClick={() => setInSession(true)}
-                              disabled={
-                                !exercises || exercises.length === 0
-                              }
+                              disabled={!exercises || exercises.length === 0}
                               className="flex-1"
                             >
                               ▶ Iniciar
@@ -672,7 +671,6 @@ export default function App() {
           )}
         </AppShell>
 
-        {/* FAB — Novo treino */}
         <button
           onClick={() => setTab('new')}
           aria-label="Novo treino"
@@ -685,13 +683,10 @@ export default function App() {
     );
   }
 
-  if (tab === 'stats') {
-    return <DashboardView onBack={() => setTab('home')} />;
-  }
-
-  if (tab === 'evolution') {
+  if (tab === 'stats') return <DashboardView onBack={() => setTab('home')} />;
+  if (tab === 'evolution')
     return <ExerciseProgressView onBack={() => setTab('home')} />;
-  }
+  if (tab === 'diet') return <DietView onBack={() => setTab('home')} />;
 
   if (tab === 'new') {
     return (
@@ -742,11 +737,7 @@ export default function App() {
         </div>
 
         <div className="mt-6">
-          <Button
-            variant="secondary"
-            fullWidth
-            onClick={() => setTab('home')}
-          >
+          <Button variant="secondary" fullWidth onClick={() => setTab('home')}>
             ← Voltar
           </Button>
         </div>
@@ -754,13 +745,8 @@ export default function App() {
     );
   }
 
-  if (tab === 'agenda') {
-    return <CalendarView onBack={() => setTab('home')} />;
-  }
-
-  if (tab === 'profile') {
-    return <ProfileView onBack={() => setTab('home')} />;
-  }
+  if (tab === 'agenda') return <CalendarView onBack={() => setTab('home')} />;
+  if (tab === 'profile') return <ProfileView onBack={() => setTab('home')} />;
 
   return null;
 }

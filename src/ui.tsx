@@ -501,7 +501,7 @@ export function NavIcon({
   name,
   active,
 }: {
-  name: 'home' | 'chart' | 'plus' | 'calendar' | 'user' | 'trend';
+  name: 'home' | 'chart' | 'plus' | 'calendar' | 'user' | 'trend' | 'apple';
   active?: boolean;
 }) {
   const size = 24;
@@ -595,6 +595,23 @@ export function NavIcon({
         <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" fill="none" />
         <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" fill="none" />
         <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" fill="none" />
+      </svg>
+    );
+  }
+
+  if (name === 'apple') {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 2C9 2 8 4 8 5c-1 0-5 1-5 6s4 11 8 11 4-2 6-2 4 2 5 1-1-8-1-11c0-2-2-5-5-5s-3 0-4-1z" />
       </svg>
     );
   }

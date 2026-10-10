@@ -1,13 +1,8 @@
 import Dexie, { type Table } from 'dexie';
 
-export type SetType =
-  | 'normal'
-  | 'warmup' // aquecimento
-  | 'drop' // drop-set
-  | 'myo' // myo-reps (mini-série)
-  | 'restpause' // rest-pause
-  | 'cluster' // cluster
-  | 'failure'; // falha
+/* ══════════════════════════════════════════════════════════
+   TIPOS
+   ══════════════════════════════════════════════════════════ */
 
 export interface Workout {
   id?: number;
@@ -15,46 +10,38 @@ export interface Workout {
   createdAt: number;
 }
 
-export interface UnlockedAchievement {
-  id?: number;
-  achievementId: string;
-  unlockedAt: number;
-}
-
-export interface Profile {
-  id?: number;
-  name: string;
-  weightKg: number; // peso atual
-  heightCm: number;
-  age: number;
-  sex: 'M' | 'F';
-  updatedAt: number;
-  restSeconds: number; // ← novo (ex: 90)
-}
-
 export interface Exercise {
   id?: number;
   workoutId: number;
   name: string;
   order: number;
-  targetRepsMin?: number; // ex: 8
-  targetRepsMax?: number; // ex: 12
-  targetSets?: number; // ex: 4
-  note?: string; // nota permanente ("ombro esquerdo...")
-  primaryGroup?: string; // do exercício da biblioteca
+  targetRepsMin?: number;
+  targetRepsMax?: number;
+  targetSets?: number;
+  note?: string;
+  primaryGroup?: string;
   equipment?: string;
-  targetRIR?: number;      // 👈 NOVO — RIR alvo (ex: 2)
-  useRIR?: boolean;        // 👈 NOVO — toggle por exercício
+  targetRIR?: number;
+  useRIR?: boolean;
 }
+
+export type SetType =
+  | 'normal'
+  | 'warmup'
+  | 'drop'
+  | 'myo'
+  | 'restpause'
+  | 'cluster'
+  | 'failure';
 
 export interface Session {
   id?: number;
   workoutId: number;
   startedAt: number;
   finishedAt?: number;
-  notes?: string; // ← novo
-  pausedAt?: number; // timestamp de quando pausou
-  totalPausedMs?: number; // soma de todas as pausas
+  notes?: string;
+  pausedAt?: number;
+  totalPausedMs?: number;
   isDeload?: boolean;
 }
 
@@ -66,25 +53,40 @@ export interface SetLog {
   reps: number;
   weight: number;
   createdAt: number;
-  type?: SetType; // default "normal"
-  tutSeconds?: number; // tempo sob tensão (seg)
-  rpe?: number; // 1-10 (opcional)
-  note?: string; // nota rápida da série
+  type?: SetType;
+  tutSeconds?: number;
+  rpe?: number;
+  note?: string;
 }
 
-// Adicione estas interfaces no topo (junto das outras)
+export interface Profile {
+  id?: number;
+  name: string;
+  weightKg: number;
+  heightCm: number;
+  age: number;
+  sex: 'M' | 'F';
+  restSeconds: number;
+  updatedAt: number;
+}
+
+export interface UnlockedAchievement {
+  id?: number;
+  achievementId: string;
+  unlockedAt: number;
+}
 
 export interface BodyMeasurement {
   id?: number;
-  date: number;           // timestamp
+  date: number;
   weightKg?: number;
   bodyFatPct?: number;
   chestCm?: number;
   waistCm?: number;
   hipCm?: number;
-  armCm?: number;         // braço (relaxado)
-  thighCm?: number;       // coxa
-  calfCm?: number;        // panturrilha
+  armCm?: number;
+  thighCm?: number;
+  calfCm?: number;
   neckCm?: number;
   shoulderCm?: number;
   note?: string;
@@ -92,14 +94,14 @@ export interface BodyMeasurement {
 
 export interface DailyLog {
   id?: number;
-  date: string;           // "YYYY-MM-DD"
+  date: string;
   waterMl?: number;
   proteinG?: number;
   caloriesKcal?: number;
   sleepHours?: number;
-  readinessScore?: number; // 0-100
+  readinessScore?: number;
   mood?: 1 | 2 | 3 | 4 | 5;
-  soreness?: 1 | 2 | 3 | 4 | 5; // 1=nenhuma, 5=muita
+  soreness?: 1 | 2 | 3 | 4 | 5;
   stress?: 1 | 2 | 3 | 4 | 5;
 }
 
@@ -111,27 +113,108 @@ export interface SomatotypeResult {
   ectomorphy: number;
 }
 
-class GymDB extends Dexie {
+/* ══════════════════════════════════════════════════════════
+   NUTRIÇÃO / DIETA
+   ══════════════════════════════════════════════════════════ */
 
+export type MealType =
+  | 'cafe'
+  | 'lanche1'
+  | 'almoco'
+  | 'lanche2'
+  | 'jantar'
+  | 'ceia'
+  | 'pre'
+  | 'pos';
+
+export type GoalType = 'cutting' | 'maintenance' | 'bulking';
+
+export interface Food {
+  id?: number;
+  name: string;
+  brand?: string;
+  category: string;
+
+  kcalPer100: number;
+  proteinPer100: number;
+  carbsPer100: number;
+  fatPer100: number;
+  fiberPer100?: number;
+
+  commonUnit?: 'g' | 'ml' | 'unidade';
+  commonUnitGrams?: number;
+
+  isFavorite?: boolean;
+  isCustom?: boolean;
+  createdAt: number;
+}
+
+export interface MealEntry {
+  id?: number;
+  date: string;
+  mealType: MealType;
+  foodId?: number;
+  foodName: string;
+  quantityG: number;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber?: number;
+  createdAt: number;
+}
+
+export interface NutritionGoal {
+  id?: number;
+  goalType: GoalType;
+  targetKcal: number;
+  targetProtein: number;
+  targetCarbs: number;
+  targetFat: number;
+  targetFiber: number;
+
+  mealDistribution: {
+    cafe: number;
+    lanche1: number;
+    almoco: number;
+    lanche2: number;
+    jantar: number;
+    ceia: number;
+  };
+
+  updatedAt: number;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DB
+   ══════════════════════════════════════════════════════════ */
+
+class GymDB extends Dexie {
   workouts!: Table<Workout, number>;
   exercises!: Table<Exercise, number>;
   sessions!: Table<Session, number>;
   sets!: Table<SetLog, number>;
-  profile!: Table<Profile, number>; // ← nova
-  meta!: Table<{ id?: number; lastDeloadAt?: number }, number>; // 👈 novo
+  profile!: Table<Profile, number>;
+  meta!: Table<{ id?: number; lastDeloadAt?: number }, number>;
   achievements!: Table<UnlockedAchievement, number>;
   bodyMeasurements!: Table<BodyMeasurement, number>;
   dailyLogs!: Table<DailyLog, number>;
   somatotypes!: Table<SomatotypeResult, number>;
 
+  foods!: Table<Food, number>;
+  mealEntries!: Table<MealEntry, number>;
+  nutritionGoals!: Table<NutritionGoal, number>;
+
   constructor() {
     super('gymDB');
+
     this.version(1).stores({
       workouts: '++id, name, createdAt',
       exercises: '++id, workoutId, order',
       sessions: '++id, workoutId, startedAt',
       sets: '++id, sessionId, exerciseId',
     });
+
     this.version(2).stores({
       workouts: '++id, name, createdAt',
       exercises: '++id, workoutId, order',
@@ -139,22 +222,25 @@ class GymDB extends Dexie {
       sets: '++id, sessionId, exerciseId',
       profile: '++id',
     });
+
     this.version(3).stores({
       workouts: '++id, name, createdAt',
       exercises: '++id, workoutId, order',
-      sessions: '++id, workoutId, startedAt',
-      sets: '++id, sessionId, exerciseId, type', // 👈 índice novo
-      profile: '++id',
-      meta: '++id',
-    });
-    this.version(4).stores({
-      workouts: '++id, name, createdAt',
-      exercises: '++id, workoutId, order, name', // 👈 name indexado
       sessions: '++id, workoutId, startedAt',
       sets: '++id, sessionId, exerciseId, type',
       profile: '++id',
       meta: '++id',
     });
+
+    this.version(4).stores({
+      workouts: '++id, name, createdAt',
+      exercises: '++id, workoutId, order, name',
+      sessions: '++id, workoutId, startedAt',
+      sets: '++id, sessionId, exerciseId, type',
+      profile: '++id',
+      meta: '++id',
+    });
+
     this.version(5).stores({
       workouts: '++id, name, createdAt',
       exercises: '++id, workoutId, order, name',
@@ -162,8 +248,9 @@ class GymDB extends Dexie {
       sets: '++id, sessionId, exerciseId, type',
       profile: '++id',
       meta: '++id',
-      achievements: '++id, achievementId, unlockedAt', // 👈 novo
+      achievements: '++id, achievementId, unlockedAt',
     });
+
     this.version(6).stores({
       workouts: '++id, name, createdAt',
       exercises: '++id, workoutId, order, name',
@@ -176,28 +263,30 @@ class GymDB extends Dexie {
       dailyLogs: '++id, date',
       somatotypes: '++id, date',
     });
+
+    this.version(7).stores({
+      workouts: '++id, name, createdAt',
+      exercises: '++id, workoutId, order, name',
+      sessions: '++id, workoutId, startedAt',
+      sets: '++id, sessionId, exerciseId, type',
+      profile: '++id',
+      meta: '++id',
+      achievements: '++id, achievementId, unlockedAt',
+      bodyMeasurements: '++id, date',
+      dailyLogs: '++id, date',
+      somatotypes: '++id, date',
+      foods: '++id, name, category, isFavorite',
+      mealEntries: '++id, date, mealType, foodId',
+      nutritionGoals: '++id',
+    });
   }
 }
 
 export const db = new GymDB();
 
-// Pega a última série registrada de um exercício (qualquer sessão)
-export async function getLastSet(exerciseId: number) {
-  const all = await db.sets
-    .where('exerciseId')
-    .equals(exerciseId)
-    .reverse()
-    .sortBy('createdAt');
-  return all[0];
-}
-
-// Sessões finalizadas, mais recentes primeiro
-export async function getFinishedSessions() {
-  const all = await db.sessions
-    .filter((s) => s.finishedAt !== undefined)
-    .toArray();
-  return all.sort((a, b) => b.startedAt - a.startedAt);
-}
+/* ══════════════════════════════════════════════════════════
+   HELPERS
+   ══════════════════════════════════════════════════════════ */
 
 export async function getProfile(): Promise<Profile | undefined> {
   return db.profile.toCollection().first();
@@ -213,7 +302,22 @@ export async function saveProfile(p: Omit<Profile, 'id' | 'updatedAt'>) {
   }
 }
 
-// Retorna o PR (maior carga) de um exercício em qualquer sessão
+export async function getLastSet(exerciseId: number) {
+  const all = await db.sets
+    .where('exerciseId')
+    .equals(exerciseId)
+    .reverse()
+    .sortBy('createdAt');
+  return all[0];
+}
+
+export async function getFinishedSessions() {
+  const all = await db.sessions
+    .filter((s) => s.finishedAt !== undefined)
+    .toArray();
+  return all.sort((a, b) => b.startedAt - a.startedAt);
+}
+
 export async function getExercisePR(exerciseId: number) {
   const sets = await db.sets.where('exerciseId').equals(exerciseId).toArray();
   if (sets.length === 0) return null;
