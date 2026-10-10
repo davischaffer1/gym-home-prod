@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Exercise, type SetType } from './db';
 import RestTimer from './RestTimer';
 import SwipeableExerciseView from './SwipeableExerciseView';
+import PRModal from './PRModal';
 import {
   saveActiveSession,
   getActiveSession,
@@ -25,7 +26,12 @@ import {
   predict1RM,
   detectLatentPR,
   classifyFiberActivation,
+  guessGroupFromName,
 } from './trainingScience';
+import { calculateRecoveryByGroup, formatHoursRemaining } from './recovery';
+import { PunchButton } from './Motion';
+import { playPRSound, playSetSound, vibrate } from './sound';
+import { Button, Input, Badge } from './ui';
 
 interface Props {
   workoutId: number;
@@ -41,14 +47,21 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   const [notesDraft, setNotesDraft] = useState('');
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
 
-  // Cria a sessão OU restaura uma ativa
+  // PR celebration
+  const [prCelebration, setPrCelebration] = useState<{
+    exerciseName: string;
+    weight: number;
+    reps: number;
+    estimated1RM: number;
+    previousPR: number;
+  } | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       await requestNotificationPermission();
 
-      // 👇 Tenta restaurar sessão ativa
       const savedId = getActiveSession();
       if (savedId) {
         const existing = await db.sessions.get(savedId);
@@ -60,12 +73,10 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
           await showActiveSessionNotification('Treino', existing.startedAt);
           return;
         } else {
-          // Sessão antiga já fechada
           clearActiveSession();
         }
       }
 
-      // Cria nova sessão
       const id = await db.sessions.add({
         workoutId,
         startedAt: Date.now(),
@@ -98,14 +109,12 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   );
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
 
-  // Sincroniza notas quando a sessão chega
   useEffect(() => {
     if (session?.notes !== undefined) {
       setNotesDraft(session.notes);
     }
   }, [session?.notes]);
 
-  // Ouve ações dos botões da notificação
   useEffect(() => {
     const cleanup = listenToNotificationActions(async (action) => {
       if (action === 'finish' || action === 'finish-session') {
@@ -153,11 +162,24 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
     setShowNotes(false);
   }
 
-  // Returns condicionais
+  function handlePR(pr: {
+    exerciseName: string;
+    weight: number;
+    reps: number;
+    estimated1RM: number;
+    previousPR: number;
+  }) {
+    playPRSound();
+    vibrate([120, 60, 120, 60, 240]);
+    setPrCelebration(pr);
+  }
+
   if (sessionId === null || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center safe-top safe-bottom">
-        <p className="text-text-3">Iniciando sessão...</p>
+        <p className="text-text-3 font-mono-ui uppercase tracking-wider text-[11px]">
+          Iniciando sessão...
+        </p>
       </div>
     );
   }
@@ -176,7 +198,9 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   if (!exercises) {
     return (
       <div className="min-h-screen flex items-center justify-center safe-top safe-bottom">
-        <p className="text-text-3">Carregando exercícios...</p>
+        <p className="text-text-3 font-mono-ui uppercase tracking-wider text-[11px]">
+          Carregando...
+        </p>
       </div>
     );
   }
@@ -186,11 +210,10 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
 
   return (
     <div className="min-h-screen flex flex-col safe-top safe-bottom safe-x bg-bg-0">
-      {/* Header da sessão */}
       <div className="max-w-lg mx-auto w-full px-4 pt-3 pb-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-lg font-bold tracking-tight text-text-0 truncate">
+            <h1 className="text-lg font-bold tracking-tight text-text-0 font-display">
               Sessão
             </h1>
             <ElapsedTime
@@ -202,23 +225,23 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
           <div className="flex gap-2 flex-shrink-0">
             <button
               onClick={() => setShowNotes((s) => !s)}
-              className="w-9 h-9 rounded-xl bg-bg-1 border border-white/[0.06] active:scale-95 transition-all flex items-center justify-center text-sm"
+              className="w-9 h-9 rounded-xl bg-bg-1 border border-white/[0.06] active:scale-95 transition-all flex items-center justify-center text-sm hover:border-accent/30"
             >
               📝
             </button>
             <button
               onClick={togglePause}
-              className={`w-9 h-9 rounded-xl active:scale-95 transition-all flex items-center justify-center text-sm ${
+              className={`w-9 h-9 rounded-xl active:scale-95 transition-all flex items-center justify-center text-sm border ${
                 session.pausedAt
-                  ? 'bg-warn/20 border border-warn/40 text-warn'
-                  : 'bg-bg-1 border border-white/[0.06]'
+                  ? 'bg-warn/20 border-warn/40 text-warn'
+                  : 'bg-bg-1 border-white/[0.06] hover:border-accent/30'
               }`}
             >
               {session.pausedAt ? '▶' : '⏸'}
             </button>
             <button
               onClick={finish}
-              className="h-9 px-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-xs font-semibold active:scale-95 transition-all"
+              className="h-9 px-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-[10px] font-bold font-mono-ui uppercase tracking-wider active:scale-95 transition-all hover:bg-danger/20"
             >
               Encerrar
             </button>
@@ -234,15 +257,15 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
               onChange={(e) => setNotesDraft(e.target.value)}
             />
             <div className="flex gap-2">
-              <button
+              <PunchButton
                 onClick={saveNotes}
-                className="flex-1 bg-accent hover:bg-accent-hover text-black py-2 rounded-xl text-xs font-semibold active:scale-[0.98] transition-all"
+                className="flex-1 bg-accent hover:bg-accent-hover text-black py-2 rounded-xl text-xs font-bold font-display active:scale-[0.98] transition-all"
               >
                 Salvar
-              </button>
+              </PunchButton>
               <button
                 onClick={() => setShowNotes(false)}
-                className="flex-1 bg-white/[0.05] py-2 rounded-xl text-xs active:scale-[0.98] transition-all text-text-1"
+                className="flex-1 bg-white/[0.05] py-2 rounded-xl text-xs font-mono-ui uppercase tracking-wider active:scale-[0.98] transition-all text-text-2"
               >
                 Fechar
               </button>
@@ -251,7 +274,6 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
         )}
       </div>
 
-      {/* Navegação de exercícios */}
       <div className="sticky top-0 z-30 bg-bg-0/90 backdrop-blur-xl border-b border-white/[0.05]">
         <div className="max-w-lg mx-auto px-4 py-2.5">
           <div className="flex items-center justify-between gap-2">
@@ -260,34 +282,31 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
                 setCurrentExerciseIndex((i) => Math.max(0, i - 1))
               }
               disabled={currentExerciseIndex === 0}
-              className="w-8 h-8 rounded-lg hover:bg-white/[0.05] disabled:opacity-25 active:scale-90 transition-all flex items-center justify-center text-text-2"
+              className="w-8 h-8 rounded-lg hover:bg-white/[0.05] disabled:opacity-25 active:scale-90 transition-all flex items-center justify-center text-text-2 hover:text-accent"
             >
               ←
             </button>
 
             <div className="text-center flex-1 min-w-0">
-              <div className="text-sm font-semibold text-text-0 truncate">
+              <div className="text-sm font-bold text-text-0 truncate font-display">
                 {currentEx?.order}. {currentEx?.name}
               </div>
-              <div className="text-[10px] text-text-3 mt-0.5">
-                Exercício {currentExerciseIndex + 1} de {totalEx}
+              <div className="text-[10px] text-text-3 mt-0.5 font-mono-ui uppercase tracking-wider">
+                Exercício {currentExerciseIndex + 1} / {totalEx}
               </div>
             </div>
 
             <button
               onClick={() =>
-                setCurrentExerciseIndex((i) =>
-                  Math.min(totalEx - 1, i + 1)
-                )
+                setCurrentExerciseIndex((i) => Math.min(totalEx - 1, i + 1))
               }
               disabled={currentExerciseIndex === totalEx - 1}
-              className="w-8 h-8 rounded-lg hover:bg-white/[0.05] disabled:opacity-25 active:scale-90 transition-all flex items-center justify-center text-text-2"
+              className="w-8 h-8 rounded-lg hover:bg-white/[0.05] disabled:opacity-25 active:scale-90 transition-all flex items-center justify-center text-text-2 hover:text-accent"
             >
               →
             </button>
           </div>
 
-          {/* Barras de progresso */}
           <div className="flex gap-1 mt-2.5">
             {exercises.map((_, idx) => (
               <button
@@ -295,19 +314,17 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
                 onClick={() => setCurrentExerciseIndex(idx)}
                 className={`flex-1 h-1 rounded-full transition-all duration-300 ${
                   idx === currentExerciseIndex
-                    ? 'bg-accent'
+                    ? 'bg-accent shadow-glow-accent'
                     : idx < currentExerciseIndex
                     ? 'bg-accent/50'
                     : 'bg-white/[0.08]'
                 }`}
-                aria-label={`Ir para exercício ${idx + 1}`}
               />
             ))}
           </div>
         </div>
       </div>
 
-      {/* Carrossel */}
       <div className="flex-1 overflow-y-auto pb-40">
         <div className="max-w-lg mx-auto pt-4">
           <SwipeableExerciseView
@@ -322,6 +339,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
                 defaultRest={profile?.restSeconds ?? 90}
                 onSetAdded={(sec) => setRestSeconds(sec)}
                 isActive={idx === currentExerciseIndex}
+                onPR={handlePR}
               />
             )}
           </SwipeableExerciseView>
@@ -334,12 +352,21 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
           onClose={() => setRestSeconds(null)}
         />
       )}
+
+      <PRModal
+        open={prCelebration !== null}
+        exerciseName={prCelebration?.exerciseName ?? ''}
+        weight={prCelebration?.weight ?? 0}
+        reps={prCelebration?.reps ?? 0}
+        estimated1RM={prCelebration?.estimated1RM ?? 0}
+        previousPR={prCelebration?.previousPR}
+        onClose={() => setPrCelebration(null)}
+      />
     </div>
   );
 }
 
 /* ---------- Cronômetro ---------- */
-
 function ElapsedTime({
   startedAt,
   pausedAt,
@@ -364,30 +391,40 @@ function ElapsedTime({
   const s = sec % 60;
 
   return (
-    <p className="text-sm text-accent flex items-center gap-2 mt-0.5">
+    <p className="text-sm text-accent flex items-center gap-2 mt-0.5 font-mono-ui font-bold">
       <span className="w-2 h-2 rounded-full bg-accent animate-pulse-soft" />
       {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
-      {pausedAt && <span className="text-warn text-xs">⏸</span>}
+      {pausedAt && (
+        <span className="text-warn text-[10px] uppercase tracking-wider">
+          ⏸ pausado
+        </span>
+      )}
     </p>
   );
 }
 
 /* ---------- Card de exercício ---------- */
-
 function ExerciseCard({
   exercise,
   sessionId,
   defaultRest,
   onSetAdded,
   isActive,
+  onPR,
 }: {
   exercise: Exercise;
   sessionId: number;
   defaultRest: number;
   onSetAdded: (seconds: number) => void;
   isActive: boolean;
+  onPR: (pr: {
+    exerciseName: string;
+    weight: number;
+    reps: number;
+    estimated1RM: number;
+    previousPR: number;
+  }) => void;
 }) {
-  // Estados
   const [reps, setReps] = useState('');
   const [weight, setWeight] = useState('');
   const [type, setType] = useState<SetType>('normal');
@@ -412,7 +449,6 @@ function ExerciseCard({
     return () => clearInterval(t);
   }, [tutStart]);
 
-  // Última série antes desta sessão
   const lastSet = useLiveQuery(
     async () => {
       try {
@@ -429,7 +465,6 @@ function ExerciseCard({
     [exercise.id, sessionId]
   );
 
-  // PR anterior
   const pr = useLiveQuery(
     async () => {
       try {
@@ -508,14 +543,12 @@ function ExerciseCard({
     [sessionId, exercise.id]
   );
 
-  // Derivados
   const allSets = (setsRaw ?? []).filter(
     (s) => s && typeof s.weight === 'number' && typeof s.reps === 'number'
   );
 
   const totalTut = allSets.reduce((acc, s) => acc + (s.tutSeconds ?? 0), 0);
 
-  // 1RM em tempo real
   const best1RM = useLiveQuery(
     async () => {
       if (allSets.length === 0) return null;
@@ -533,7 +566,6 @@ function ExerciseCard({
     [allSets.length, exercise.id]
   );
 
-  // PR latente
   const latentPR = useLiveQuery(
     async () => {
       const historical = await db.sets
@@ -548,7 +580,6 @@ function ExerciseCard({
     [exercise.id, sessionId, allSets.length]
   );
 
-  // Sugestão por RIR
   const rirSuggestion = useLiveQuery(
     async () => {
       if (!exercise.useRIR) return null;
@@ -580,7 +611,6 @@ function ExerciseCard({
     ]
   );
 
-  // 🎯 Sugestão de progressão (próxima série)
   const nextRepGoal = useLiveQuery(
     async () => {
       if (allSets.length === 0) return null;
@@ -596,7 +626,6 @@ function ExerciseCard({
 
       if (sameWeight.length === 0) return null;
 
-      // Bateu topo em todas as séries com essa carga → sugere subir
       const allHitTop = sameWeight.every((s) => s.reps >= targetMax);
       if (allHitTop) {
         const step = last.weight < 100 ? 2.5 : 5;
@@ -605,12 +634,11 @@ function ExerciseCard({
           type: 'up' as const,
           weight: suggested,
           reps: targetMin,
-          message: `🚀 Bora subir pra ${suggested} kg?`,
+          message: `Subir pra ${suggested} kg?`,
           sub: `Bateu ${targetMax} reps em todas as séries.`,
         };
       }
 
-      // Ainda dentro da faixa → sugere +1 rep
       const lastReps = last.reps;
       if (lastReps < targetMax) {
         const nextReps = lastReps + 1;
@@ -618,8 +646,8 @@ function ExerciseCard({
           type: 'rep' as const,
           weight: last.weight,
           reps: nextReps,
-          message: `💪 Bora tentar ${nextReps} reps com ${last.weight} kg?`,
-          sub: `Última foi ${lastReps} reps. Meta: ${targetMin}–${targetMax}.`,
+          message: `${nextReps} reps com ${last.weight} kg?`,
+          sub: `Última foi ${lastReps} reps. Alvo: ${targetMin}–${targetMax}.`,
         };
       }
 
@@ -633,7 +661,16 @@ function ExerciseCard({
     ]
   );
 
-  // Funções
+  const recoveryInfo = useLiveQuery(
+    async () => {
+      const group =
+        exercise.primaryGroup ?? guessGroupFromName(exercise.name);
+      const all = await calculateRecoveryByGroup();
+      return all.find((r) => r.group === group) ?? null;
+    },
+    [exercise.id]
+  );
+
   async function addSet(customReps?: number, customWeight?: number) {
     const r = customReps ?? parseInt(reps, 10);
     const w = customWeight ?? parseFloat(weight.replace(',', '.'));
@@ -655,13 +692,28 @@ function ExerciseCard({
       rpe,
     });
 
-    if (type !== 'warmup' && pr && w > pr.weight) {
-      if ('vibrate' in navigator) {
-        navigator.vibrate?.([100, 50, 100, 50, 200]);
+    // 🏆 Detecta PR e chama celebração
+    const isPR = type !== 'warmup' && pr !== null && w > pr.weight;
+    const isFirstSet = !pr && type !== 'warmup' && w > 0;
+
+    if (isPR || isFirstSet) {
+      const oneRM = predict1RM({ weight: w, reps: r, rpe, type });
+      if (onPR) {
+        onPR({
+          exerciseName: exercise.name,
+          weight: w,
+          reps: r,
+          estimated1RM: oneRM?.estimated1RMWithRIR ?? w,
+          previousPR: pr?.weight ?? 0,
+        });
       }
       showPRNotification(exercise.name, w);
+    } else {
+      playSetSound();
+      vibrate(30);
     }
 
+    // Vibração de RIR correto
     if (
       exercise.useRIR &&
       exercise.targetRIR !== undefined &&
@@ -670,7 +722,7 @@ function ExerciseCard({
     ) {
       const reportedRIR = 10 - rpe;
       if (Math.abs(reportedRIR - exercise.targetRIR) <= 0.5) {
-        if ('vibrate' in navigator) navigator.vibrate?.(50);
+        vibrate(60);
       }
     }
 
@@ -764,62 +816,68 @@ function ExerciseCard({
 
   return (
     <div
-      className={`rounded-2xl p-4 space-y-3 border transition-all ${
+      className={`rounded-3xl p-4 space-y-3 border transition-all ${
         beatPR
-          ? 'bg-warn/5 border-warn/30'
+          ? 'bg-pr/5 border-pr/40 shadow-glow-pr'
           : done
-          ? 'bg-accent-dim border-accent/20'
-          : 'bg-bg-1 border-white/[0.06]'
+          ? 'bg-accent-dim border-accent/25 shadow-glow-accent'
+          : 'bg-bg-1 border-white/[0.06] shadow-card'
       }`}
     >
-      {/* Badges */}
       <div className="flex flex-wrap gap-1.5">
-        {beatPR && (
-          <span className="text-[10px] bg-warn text-black px-2 py-0.5 rounded-full font-bold">
-            🏆 PR {newPRValue} kg
-          </span>
-        )}
+        {beatPR && <Badge variant="pr">🏆 PR {newPRValue} kg</Badge>}
         {pr && !beatPR && (
-          <span className="text-[10px] bg-warn/10 text-warn px-2 py-0.5 rounded-full font-medium">
+          <Badge variant="warn">
             🏆 {pr.weight} × {pr.reps}
-          </span>
+          </Badge>
         )}
         {targetMin && targetMax && (
-          <span className="text-[10px] bg-accent-dim text-accent px-2 py-0.5 rounded-full font-medium">
-            🎯 {targetMin}–{targetMax} reps
-          </span>
+          <Badge variant="accent">
+            🎯 {targetMin}–{targetMax}
+          </Badge>
         )}
         {exercise.useRIR && exercise.targetRIR !== undefined && (
-          <span className="text-[10px] bg-purple/10 text-purple px-2 py-0.5 rounded-full font-medium">
-            🧠 RIR {exercise.targetRIR}
-          </span>
+          <Badge variant="sci">🧠 RIR {exercise.targetRIR}</Badge>
         )}
         {done && (
-          <span className="text-[10px] bg-white/[0.05] text-text-2 px-2 py-0.5 rounded-full font-medium">
-            {allSets.length} séries · {totalTut}s TUT
-          </span>
+          <Badge variant="default">
+            {allSets.length} séries · {totalTut}s
+          </Badge>
         )}
       </div>
 
-      {/* 1RM */}
+      {recoveryInfo && recoveryInfo.score < 60 && (
+        <div className="bg-warn/10 border border-warn/30 rounded-2xl px-3 py-2 text-xs text-warn flex items-start gap-2 animate-slide-up">
+          <span className="text-base flex-shrink-0">⚠️</span>
+          <div className="flex-1">
+            <div className="font-semibold font-display">
+              {recoveryInfo.group} ainda não recuperado (
+              {recoveryInfo.score}%)
+            </div>
+            <div className="text-[10px] opacity-80 mt-0.5 font-mono-ui uppercase tracking-wider">
+              Pronto em {formatHoursRemaining(recoveryInfo.hoursRemaining)}
+            </div>
+          </div>
+        </div>
+      )}
+
       {best1RM && (
-        <div className="text-[11px] text-text-2 bg-white/[0.03] rounded-xl px-3 py-1.5">
-          📊 1RM estimado:{' '}
+        <div className="text-[11px] text-text-2 bg-white/[0.03] rounded-xl px-3 py-1.5 font-mono-ui">
+          <span className="uppercase tracking-wider">1RM est.</span>{' '}
           <strong className="text-accent">
             {Math.round(best1RM.estimate * 10) / 10} kg
           </strong>
         </div>
       )}
 
-      {/* PR latente */}
       {latentPR && (
-        <div className="bg-purple/10 border border-purple/30 rounded-xl px-3 py-2 text-xs text-purple animate-slide-up">
-          <div className="font-semibold mb-0.5">
+        <div className="bg-sci/10 border border-sci/30 rounded-xl px-3 py-2 text-xs text-sci animate-slide-up">
+          <div className="font-bold font-display mb-0.5">
             🔮 Você tem margem para mais
           </div>
           <div className="text-[11px] opacity-90 leading-relaxed">
-            PR: {latentPR.actualPR} kg · 1RM teórico: {latentPR.estimated1RM}{' '}
-            kg
+            PR: {latentPR.actualPR} kg · 1RM teórico:{' '}
+            {latentPR.estimated1RM} kg
             <br />
             👉 Tente{' '}
             <strong>
@@ -830,14 +888,12 @@ function ExerciseCard({
         </div>
       )}
 
-      {/* Nota permanente */}
       {exercise.note && (
         <div className="bg-white/[0.03] border border-white/[0.04] rounded-xl px-3 py-2 text-xs text-text-2 italic">
           📝 {exercise.note}
         </div>
       )}
 
-      {/* Sugestão RIR */}
       {exercise.useRIR &&
         rirSuggestion &&
         rirSuggestion.direction !== 'keep' && (
@@ -849,46 +905,45 @@ function ExerciseCard({
             }`}
           >
             <div className="flex-1">
-              <div className="font-semibold mb-0.5">
+              <div className="font-bold font-display mb-0.5">
                 🧠 {rirSuggestion.direction === 'up' ? 'Suba' : 'Reduza'}
               </div>
-              <div className="text-[10px] opacity-80">
-                Nova: <strong>{rirSuggestion.suggestedWeight} kg</strong>
+              <div className="text-[10px] opacity-80 font-mono-ui uppercase tracking-wider">
+                Nova: {rirSuggestion.suggestedWeight} kg
               </div>
             </div>
-            <button
-              onClick={() => setWeight(String(rirSuggestion.suggestedWeight))}
-              className="bg-accent text-black px-2.5 py-1 rounded-lg text-[10px] font-bold active:scale-95"
+            <PunchButton
+              onClick={() =>
+                setWeight(String(rirSuggestion.suggestedWeight))
+              }
+              className="bg-accent text-black px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono-ui uppercase tracking-wider"
             >
               Usar
-            </button>
+            </PunchButton>
           </div>
         )}
 
-      {/* Sugestão dupla progressão */}
       {analysis?.suggestedWeight && (
         <div className="bg-accent-dim border border-accent/30 rounded-xl px-3 py-2 text-xs text-accent flex items-center justify-between gap-2">
-          <span className="text-[11px]">
-            💡 Bateu topo 2× seguidas. Suba para{' '}
-            <strong>{analysis.suggestedWeight} kg</strong>
+          <span className="text-[11px] font-display">
+            💡 Suba para <strong>{analysis.suggestedWeight} kg</strong>
           </span>
-          <button
+          <PunchButton
             onClick={() => setWeight(String(analysis.suggestedWeight))}
-            className="bg-accent text-black px-2.5 py-1 rounded-lg text-[10px] font-bold active:scale-95"
+            className="bg-accent text-black px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono-ui uppercase tracking-wider"
           >
             Usar
-          </button>
+          </PunchButton>
         </div>
       )}
 
-      {/* Platô */}
       {analysis?.plateau && !analysis.suggestedWeight && (
         <div className="bg-danger/10 border border-danger/30 rounded-xl px-3 py-2 text-xs text-danger">
-          📉 <strong>Platô</strong> — 3 sessões sem subir
+          📉 <strong className="font-display">Platô</strong> — 3 sessões sem
+          subir
         </div>
       )}
 
-      {/* Lista de séries */}
       {allSets.length > 0 && (
         <ul className="space-y-1.5">
           {allSets.map((s) => {
@@ -900,27 +955,27 @@ function ExerciseCard({
                   key={s.id}
                   className="bg-accent-dim border border-accent/30 rounded-xl p-2.5 space-y-2"
                 >
-                  <div className="text-[10px] text-text-3">
+                  <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider">
                     Editando série {s.setNumber}
                   </div>
                   <div className="flex gap-1.5">
                     <input
                       autoFocus
-                      className="flex-1 bg-bg-2 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-center outline-none focus:border-accent/40 text-text-0"
+                      className="flex-1 bg-bg-2 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-center outline-none focus:border-accent/40 text-text-0 font-mono-ui"
                       inputMode="numeric"
                       placeholder="reps"
                       value={editReps}
                       onChange={(e) => setEditReps(e.target.value)}
                     />
                     <input
-                      className="flex-1 bg-bg-2 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-center outline-none focus:border-accent/40 text-text-0"
+                      className="flex-1 bg-bg-2 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-center outline-none focus:border-accent/40 text-text-0 font-mono-ui"
                       inputMode="decimal"
                       placeholder="kg"
                       value={editWeight}
                       onChange={(e) => setEditWeight(e.target.value)}
                     />
                     <select
-                      className="bg-bg-2 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs outline-none text-text-0"
+                      className="bg-bg-2 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs outline-none text-text-0 font-mono-ui"
                       value={editRpe ?? ''}
                       onChange={(e) =>
                         setEditRpe(
@@ -941,13 +996,13 @@ function ExerciseCard({
                   <div className="flex gap-1.5">
                     <button
                       onClick={saveEditSet}
-                      className="flex-1 bg-accent text-black py-1.5 rounded-lg text-xs font-semibold active:scale-95"
+                      className="flex-1 bg-accent text-black py-1.5 rounded-lg text-xs font-bold font-display active:scale-95"
                     >
                       ✓
                     </button>
                     <button
                       onClick={cancelEdit}
-                      className="flex-1 bg-white/[0.05] py-1.5 rounded-lg text-xs active:scale-95 text-text-2"
+                      className="flex-1 bg-white/[0.05] py-1.5 rounded-lg text-xs active:scale-95 text-text-2 font-mono-ui uppercase tracking-wider"
                     >
                       ✕
                     </button>
@@ -971,18 +1026,18 @@ function ExerciseCard({
                 key={s.id}
                 className={`flex justify-between items-center rounded-xl px-3 py-2 text-xs gap-2 ${
                   isPRSet
-                    ? 'bg-warn/10 border border-warn/30'
+                    ? 'bg-pr/10 border border-pr/30'
                     : 'bg-bg-2 border border-white/[0.04]'
                 }`}
               >
                 <span className="flex flex-wrap items-center gap-1.5 min-w-0">
                   {isPRSet && '🏆'}
-                  <span className="font-medium text-text-0">
+                  <span className="font-bold text-text-0 font-mono-ui">
                     S{s.setNumber}: {s.reps} × {s.weight} kg
                   </span>
                   {t !== 'normal' && (
                     <span
-                      className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${typeBadgeStyle(
+                      className={`text-[9px] px-1.5 py-0.5 rounded font-bold font-mono-ui uppercase tracking-wider ${typeBadgeStyle(
                         t
                       )}`}
                     >
@@ -990,13 +1045,13 @@ function ExerciseCard({
                     </span>
                   )}
                   {s.rpe !== undefined && (
-                    <span className="text-[10px] text-text-3">
+                    <span className="text-[10px] text-text-3 font-mono-ui">
                       RPE {s.rpe}
                     </span>
                   )}
                   {fiber && (
                     <span
-                      className="text-[10px] text-purple"
+                      className="text-[10px] text-sci font-mono-ui"
                       title={`${fiber.intensityPct}% 1RM`}
                     >
                       {fiber.typeII ? '⚡II' : 'I'}
@@ -1024,78 +1079,74 @@ function ExerciseCard({
         </ul>
       )}
 
-      {/* 🎯 Sugestão de progressão */}
       {nextRepGoal && (
-        <button
-          type="button"
+        <PunchButton
           onClick={() => {
             setReps(String(nextRepGoal.reps));
             setWeight(String(nextRepGoal.weight));
           }}
-          className="w-full bg-gradient-to-r from-accent/20 to-purple/20 border border-accent/40 rounded-2xl px-3 py-3 flex items-center gap-3 text-left active:scale-[0.98] transition-all"
+          className="w-full bg-gradient-to-r from-accent/20 to-sci/20 border border-accent/40 rounded-2xl px-3 py-3 flex items-center gap-3 text-left"
         >
           <span className="text-2xl flex-shrink-0">
             {nextRepGoal.type === 'up' ? '🚀' : '💪'}
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-accent">
+            <div className="text-sm font-bold text-accent font-display">
               {nextRepGoal.message}
             </div>
-            <div className="text-[10px] text-text-3 mt-0.5">
+            <div className="text-[10px] text-text-3 mt-0.5 font-mono-ui uppercase tracking-wider">
               {nextRepGoal.sub}
             </div>
           </div>
           <span className="text-accent text-lg">›</span>
-        </button>
+        </PunchButton>
       )}
 
-      {/* Repetir última */}
       {lastSet && (
         <button
           onClick={quickAdd}
-          className="w-full bg-accent-dim hover:bg-accent/20 border border-accent/30 py-2 rounded-xl text-xs font-medium text-accent active:scale-[0.98] transition-all"
+          className="w-full bg-accent-dim hover:bg-accent/20 border border-accent/30 py-2 rounded-xl text-xs font-medium text-accent active:scale-[0.98] transition-all font-mono-ui uppercase tracking-wider"
         >
           ⚡ Repetir última ({lastSet.reps} × {lastSet.weight} kg)
         </button>
       )}
 
-      {/* Input principal */}
       <div className="flex gap-2">
         <input
-          className="flex-1 min-w-0 bg-bg-2 border border-white/[0.06] rounded-xl px-3 py-3 text-base outline-none focus:border-accent/40 placeholder:text-text-3 text-center text-text-0"
+          className="flex-1 min-w-0 bg-bg-2 border border-white/[0.06] rounded-2xl px-3 py-3 text-base outline-none focus:border-accent/50 focus:shadow-glow-accent transition-all placeholder:text-text-3 text-center text-text-0 font-mono-ui font-bold"
           placeholder={lastSet ? `${lastSet.reps}` : 'reps'}
           inputMode="numeric"
           value={reps}
           onChange={(e) => setReps(e.target.value)}
         />
         <input
-          className="flex-1 min-w-0 bg-bg-2 border border-white/[0.06] rounded-xl px-3 py-3 text-base outline-none focus:border-accent/40 placeholder:text-text-3 text-center text-text-0"
+          className="flex-1 min-w-0 bg-bg-2 border border-white/[0.06] rounded-2xl px-3 py-3 text-base outline-none focus:border-accent/50 focus:shadow-glow-accent transition-all placeholder:text-text-3 text-center text-text-0 font-mono-ui font-bold"
           placeholder={lastSet ? `${lastSet.weight}` : 'kg'}
           inputMode="decimal"
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
         />
-        <button
+        <PunchButton
           onClick={() => addSet()}
-          className="bg-accent hover:bg-accent-hover w-14 rounded-xl font-bold text-xl flex items-center justify-center shadow-glow-accent active:scale-95 transition-all text-black"
+          withHaptic
+          className="bg-accent hover:bg-accent-hover w-14 rounded-2xl font-bold text-2xl flex items-center justify-center shadow-glow-accent text-black"
         >
           +
-        </button>
+        </PunchButton>
       </div>
 
-      {/* Extras */}
       <div className="flex gap-1.5 items-center flex-wrap">
         <div className="relative">
           <button
             onClick={() => setShowTypeMenu((v) => !v)}
-            className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-medium active:scale-95 ${typeBadgeStyle(
+            className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-bold font-mono-ui uppercase tracking-wider active:scale-95 ${typeBadgeStyle(
               type
             )}`}
           >
             🏷 {typeLabel(type)}
           </button>
           {showTypeMenu && (
-            <div className="absolute bottom-full mb-1 z-20 bg-bg-3 border border-white/[0.08] rounded-xl p-1 shadow-card-lg w-40 animate-scale-in">
+            <div className="absolute bottom-full mb-1 z-20 bg-bg-3 border border-white/[0.08] rounded-xl p-1 shadow-card-lg w-44 animate-scale-in">
               {(
                 [
                   'normal',
@@ -1113,8 +1164,8 @@ function ExerciseCard({
                     setType(t);
                     setShowTypeMenu(false);
                   }}
-                  className={`w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-white/[0.05] ${
-                    type === t ? 'text-accent' : 'text-text-1'
+                  className={`w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-white/[0.05] font-mono-ui uppercase tracking-wider ${
+                    type === t ? 'text-accent font-bold' : 'text-text-1'
                   }`}
                 >
                   {typeLabel(t)}
@@ -1126,7 +1177,7 @@ function ExerciseCard({
 
         <button
           onClick={toggleTut}
-          className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-medium active:scale-95 ${
+          className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-bold font-mono-ui uppercase tracking-wider active:scale-95 ${
             tutStart !== null
               ? 'bg-danger/20 border-danger/40 text-danger'
               : 'bg-white/[0.04] border-white/[0.06] text-text-2'
@@ -1136,13 +1187,15 @@ function ExerciseCard({
         </button>
 
         <div className="flex items-center gap-1 bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5">
-          <span className="text-[10px] text-text-3">RPE</span>
+          <span className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider">
+            RPE
+          </span>
           <select
             value={rpe ?? ''}
             onChange={(e) =>
               setRpe(e.target.value ? parseInt(e.target.value) : undefined)
             }
-            className="bg-transparent text-[10px] outline-none text-text-1"
+            className="bg-transparent text-[10px] outline-none text-text-1 font-mono-ui"
           >
             <option value="">–</option>
             {[6, 7, 8, 9, 10].map((v) => (
@@ -1152,13 +1205,15 @@ function ExerciseCard({
             ))}
           </select>
           {rpe !== undefined && (
-            <span className="text-[10px] text-text-3">RIR {10 - rpe}</span>
+            <span className="text-[10px] text-text-3 font-mono-ui">
+              RIR {10 - rpe}
+            </span>
           )}
         </div>
 
         <button
           onClick={() => setShowNote((v) => !v)}
-          className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-medium active:scale-95 ${
+          className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-bold font-mono-ui uppercase tracking-wider active:scale-95 ${
             note
               ? 'bg-accent-dim border-accent/30 text-accent'
               : 'bg-white/[0.04] border-white/[0.06] text-text-2'
@@ -1170,7 +1225,7 @@ function ExerciseCard({
 
       {showNote && (
         <input
-          className="w-full bg-bg-2 border border-white/[0.06] rounded-xl px-3 py-2 outline-none text-sm focus:border-accent/40 animate-slide-up text-text-0"
+          className="w-full bg-bg-2 border border-white/[0.06] rounded-2xl px-3 py-2 outline-none text-sm focus:border-accent/40 animate-slide-up text-text-0"
           placeholder="Nota da série"
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -1179,8 +1234,6 @@ function ExerciseCard({
     </div>
   );
 }
-
-/* ---------- Helpers ---------- */
 
 function typeLabel(t: SetType): string {
   switch (t) {
@@ -1208,7 +1261,7 @@ function typeBadgeStyle(t: SetType): string {
     case 'drop':
       return 'bg-danger/10 border-danger/30 text-danger';
     case 'myo':
-      return 'bg-purple/10 border-purple/30 text-purple';
+      return 'bg-sci/10 border-sci/30 text-sci';
     case 'restpause':
       return 'bg-warn/10 border-warn/30 text-warn';
     case 'cluster':
@@ -1225,8 +1278,6 @@ function formatTut(seconds: number): string {
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
-
-/* ---------- Resumo final ---------- */
 
 function SessionSummary({
   sessionId,
@@ -1250,7 +1301,9 @@ function SessionSummary({
   if (!session || !sets || !exercises) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-text-3">Calculando...</p>
+        <p className="text-text-3 font-mono-ui uppercase tracking-wider text-[11px]">
+          Calculando...
+        </p>
       </div>
     );
   }
@@ -1274,61 +1327,53 @@ function SessionSummary({
       <div className="max-w-lg mx-auto px-4 pt-6 pb-12 space-y-5">
         <div className="text-center space-y-2">
           <div className="text-6xl mb-2">🏆</div>
-          <h1 className="text-3xl font-bold tracking-tight text-text-0">
-            Treino concluído!
+          <h1 className="text-3xl font-bold tracking-tight text-text-0 font-display">
+            Treino Concluído
           </h1>
-          <p className="text-text-3 text-sm">
+          <p className="text-text-3 text-[11px] font-mono-ui uppercase tracking-wider">
             {new Date(startedAt).toLocaleString('pt-BR')}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <SummaryCard
-            icon="⏱"
-            value={`${durationMin} min`}
-            label="Duração"
-          />
+          <SummaryCard icon="⏱" value={`${durationMin}`} label="Minutos" />
           <SummaryCard
             icon="🏋️"
             value={String(uniqueExercises)}
             label="Exercícios"
           />
           <SummaryCard icon="🔁" value={String(totalSets)} label="Séries" />
-          <SummaryCard
-            icon="🔢"
-            value={String(totalReps)}
-            label="Repetições"
-          />
+          <SummaryCard icon="🔢" value={String(totalReps)} label="Repetições" />
           <SummaryCard
             icon="📦"
-            value={`${totalVolume.toLocaleString('pt-BR')} kg`}
+            value={`${Math.round(totalVolume / 1000)}t`}
             label="Volume"
           />
           <SummaryCard
             icon="🔥"
-            value={`${calories} kcal`}
-            label="Calorias"
+            value={`${calories}`}
+            label="Kcal"
             highlight
           />
         </div>
 
         <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-text-3 uppercase tracking-wider px-1">
+          <h2 className="text-[10px] font-bold text-text-3 uppercase tracking-[0.15em] px-1 font-mono-ui">
             Detalhes
           </h2>
           {groupByExercise(sets, exercises).map((g) => (
             <div
               key={g.exerciseId}
-              className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4"
+              className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4 shadow-card"
             >
-              <div className="font-medium text-accent mb-2">
+              <div className="font-bold text-accent mb-2 font-display">
                 {g.exerciseName}
               </div>
-              <ul className="text-xs text-text-2 space-y-1">
+              <ul className="text-xs text-text-2 space-y-1 font-mono-ui">
                 {g.sets.map((s) => (
                   <li key={s.id} className="flex justify-between">
-                    <span>Série {s.setNumber}</span>
-                    <span className="font-medium text-text-0">
+                    <span>S{s.setNumber}</span>
+                    <span className="font-bold text-text-0">
                       {s.reps} × {s.weight} kg
                       {s.rpe !== undefined && ` · RPE ${s.rpe}`}
                     </span>
@@ -1341,7 +1386,7 @@ function SessionSummary({
 
         {session.notes && (
           <div className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4">
-            <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-2">
+            <div className="text-[10px] text-text-3 uppercase tracking-[0.15em] font-bold mb-2 font-mono-ui">
               📝 Notas
             </div>
             <p className="text-sm italic text-text-1">{session.notes}</p>
@@ -1349,15 +1394,15 @@ function SessionSummary({
         )}
 
         <div className="flex gap-2 pt-2">
-          <button
+          <PunchButton
             onClick={onRepeat}
-            className="flex-1 bg-accent hover:bg-accent-hover text-black py-4 rounded-2xl font-semibold shadow-glow-accent active:scale-[0.98] transition-all"
+            className="flex-1 bg-accent hover:bg-accent-hover text-black py-4 rounded-2xl font-bold font-display shadow-glow-accent"
           >
             🔄 Refazer
-          </button>
+          </PunchButton>
           <button
             onClick={onClose}
-            className="flex-1 bg-white/[0.05] hover:bg-white/[0.08] py-4 rounded-2xl font-semibold active:scale-[0.98] transition-all text-text-1"
+            className="flex-1 bg-white/[0.05] hover:bg-white/[0.08] py-4 rounded-2xl font-bold font-display active:scale-[0.98] transition-all text-text-1"
           >
             Concluir
           </button>
@@ -1382,19 +1427,19 @@ function SummaryCard({
     <div
       className={`rounded-2xl p-4 text-center border ${
         highlight
-          ? 'bg-accent-dim border-accent/30'
-          : 'bg-bg-1 border-white/[0.06]'
+          ? 'bg-accent-dim border-accent/30 shadow-glow-accent'
+          : 'bg-bg-1 border-white/[0.06] shadow-card'
       }`}
     >
       <div className="text-2xl mb-1">{icon}</div>
       <div
-        className={`text-lg font-bold tracking-tight ${
+        className={`text-2xl font-bold tracking-tight font-mono-ui ${
           highlight ? 'text-accent' : 'text-text-0'
         }`}
       >
         {value}
       </div>
-      <div className="text-[10px] text-text-3 mt-0.5 uppercase tracking-wider">
+      <div className="text-[9px] text-text-3 mt-0.5 uppercase tracking-[0.15em] font-mono-ui">
         {label}
       </div>
     </div>

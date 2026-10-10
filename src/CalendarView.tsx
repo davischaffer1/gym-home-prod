@@ -43,9 +43,9 @@ export default function CalendarView({ onBack }: Props) {
   function colorFor(count: number) {
     if (count === 0) return 'bg-bg-2';
     const intensity = count / maxInDay;
-    if (intensity <= 0.33) return 'bg-emerald-900';
-    if (intensity <= 0.66) return 'bg-accent';
-    return 'bg-accent-hover';
+    if (intensity <= 0.33) return 'bg-accent/20';
+    if (intensity <= 0.66) return 'bg-accent/50';
+    return 'bg-accent';
   }
 
   function tooltipFor(dateKey: string) {

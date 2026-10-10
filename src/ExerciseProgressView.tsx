@@ -1,21 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
-import { SubScreen, Card, SectionTitle, Badge } from './ui';
+import { SubScreen, Card, Badge } from './ui';
+import { StaggerItem } from './Motion';
+import { ForceLineChart } from './ForceCharts';
 import {
   estimate1RMPrecise,
   extract1RMTimeline,
   forecastPR,
 } from './trainingScience';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts';
 
 interface Props {
   onBack: () => void;
@@ -24,7 +17,6 @@ interface Props {
 export default function ExerciseProgressView({ onBack }: Props) {
   const [exerciseName, setExerciseName] = useState<string | null>(null);
 
-  // Lista de exercícios únicos que já têm séries registradas
   const exercisesWithData = useLiveQuery(async () => {
     const exercises = await db.exercises.toArray();
     const sets = await db.sets.toArray();
@@ -46,30 +38,29 @@ export default function ExerciseProgressView({ onBack }: Props) {
   return (
     <SubScreen title="Evolução" onBack={onBack}>
       {exercisesWithData === undefined && (
-        <p className="text-text-3 text-center py-10">Carregando...</p>
+        <p className="text-text-3 text-center py-10 font-mono-ui uppercase tracking-wider text-[11px]">
+          Carregando...
+        </p>
       )}
 
       {exercisesWithData?.length === 0 && (
-        <Card variant="subtle">
-          <p className="text-text-3 text-sm text-center py-10">
-            Nenhum exercício com séries registradas ainda.
-            <br />
-            Complete algumas sessões primeiro.
+        <Card variant="glass">
+          <p className="text-text-3 text-sm text-center py-10 font-mono-ui text-[11px] uppercase tracking-wider">
+            Nenhum exercício registrado ainda
           </p>
         </Card>
       )}
 
       {exercisesWithData && exercisesWithData.length > 0 && selected && (
         <>
-          {/* Seletor de exercício */}
-          <div className="mb-4">
-            <label className="text-xs text-text-3 uppercase tracking-wider font-semibold px-1 block mb-2">
+          <div className="mb-5">
+            <label className="text-[10px] text-text-3 uppercase tracking-[0.15em] font-mono-ui font-bold px-1 block mb-2">
               Escolha o exercício
             </label>
             <select
               value={selected}
               onChange={(e) => setExerciseName(e.target.value)}
-              className="w-full bg-bg-1 border border-white/[0.06] rounded-2xl px-4 py-3 text-base text-text-0 outline-none focus:border-accent/40 appearance-none cursor-pointer"
+              className="w-full bg-bg-1 border border-white/[0.06] rounded-2xl px-4 py-3.5 text-base font-display text-text-0 outline-none focus:border-accent/50 focus:shadow-glow-accent transition-all appearance-none cursor-pointer"
             >
               {exercisesWithData.map((e) => (
                 <option key={e.name} value={e.name}>
@@ -85,10 +76,6 @@ export default function ExerciseProgressView({ onBack }: Props) {
     </SubScreen>
   );
 }
-
-/* ══════════════════════════════════════════════════════════
-   GRÁFICO + CARDS + PREVISÃO
-   ══════════════════════════════════════════════════════════ */
 
 function ExerciseChart({ exerciseName }: { exerciseName: string }) {
   const data = useLiveQuery(
@@ -109,14 +96,12 @@ function ExerciseChart({ exerciseName }: { exerciseName: string }) {
       const sessions = await db.sessions.toArray();
       const sessionMap = new Map(sessions.map((s) => [s.id!, s]));
 
-      // Agrupa por sessão
       const bySession = new Map<number, typeof filtered>();
       for (const s of filtered) {
         if (!bySession.has(s.sessionId)) bySession.set(s.sessionId, []);
         bySession.get(s.sessionId)!.push(s);
       }
 
-      // Constrói pontos do gráfico
       const points = Array.from(bySession.entries())
         .map(([sessionId, list]) => {
           const session = sessionMap.get(sessionId);
@@ -140,12 +125,10 @@ function ExerciseChart({ exerciseName }: { exerciseName: string }) {
         .filter((x): x is NonNullable<typeof x> => x !== null)
         .sort((a, b) => a.timestamp - b.timestamp);
 
-      // Faixa alvo (pegando do primeiro exercício com target definido)
       const exercise = exercises.find(
         (e) => e.targetRepsMin !== undefined || e.targetRepsMax !== undefined
       );
 
-      // Timeline para previsão
       const timeline = extract1RMTimeline(filtered, sessions);
 
       return {
@@ -159,14 +142,18 @@ function ExerciseChart({ exerciseName }: { exerciseName: string }) {
   );
 
   if (!data) {
-    return <p className="text-text-3 text-center py-10">Carregando gráfico...</p>;
+    return (
+      <p className="text-text-3 text-center py-10 font-mono-ui uppercase tracking-wider text-[11px]">
+        Carregando gráfico...
+      </p>
+    );
   }
 
   if (data.points.length === 0) {
     return (
-      <Card variant="subtle">
-        <p className="text-text-3 text-sm text-center py-8">
-          Sem séries registradas para esse exercício.
+      <Card variant="glass">
+        <p className="text-text-3 text-sm text-center py-8 font-mono-ui text-[11px] uppercase tracking-wider">
+          Sem séries para esse exercício
         </p>
       </Card>
     );
@@ -180,7 +167,14 @@ function ExerciseChart({ exerciseName }: { exerciseName: string }) {
       ? Math.round((gain / firstPoint.maxWeight) * 100)
       : 0;
 
-  // 🔮 Previsão de PR
+  // Chart data (maxWeight + oneRM)
+  const chartData = data.points.map((p) => ({
+    label: p.date,
+    value: p.maxWeight,
+    value2: p.oneRM,
+  }));
+
+  // Previsão
   let nextForecast: ReturnType<typeof forecastPR> | null = null;
   let stretchForecast: ReturnType<typeof forecastPR> | null = null;
 
@@ -196,169 +190,133 @@ function ExerciseChart({ exerciseName }: { exerciseName: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Cards de destaque */}
-      <div className="grid grid-cols-2 gap-2">
-        <MiniCard
-          label="Carga atual"
-          value={`${lastPoint.maxWeight} kg`}
-          sub={`${lastPoint.topReps} reps`}
-        />
-        <MiniCard
-          label="1RM estimado"
-          value={`${lastPoint.oneRM} kg`}
-          sub="Epley + Brzycki"
-          accent
-        />
-        <MiniCard
-          label="Progresso total"
-          value={`${gain > 0 ? '+' : ''}${gain} kg`}
-          sub={`${gainPct > 0 ? '+' : ''}${gainPct}%`}
-          positive={gain > 0}
-        />
-        <MiniCard
-          label="Sessões"
-          value={String(data.points.length)}
-          sub="registradas"
-        />
-      </div>
+      {/* Stats principais */}
+      <StaggerItem delay={0}>
+        <div className="grid grid-cols-2 gap-2">
+          <MiniCard
+            label="Carga Atual"
+            value={`${lastPoint.maxWeight} kg`}
+            sub={`${lastPoint.topReps} reps`}
+          />
+          <MiniCard
+            label="1RM Estimado"
+            value={`${Math.round(lastPoint.oneRM)} kg`}
+            sub="Epley + Brzycki"
+            accent
+          />
+          <MiniCard
+            label="Progresso"
+            value={`${gain > 0 ? '+' : ''}${gain} kg`}
+            sub={`${gainPct > 0 ? '+' : ''}${gainPct}%`}
+            positive={gain > 0}
+          />
+          <MiniCard
+            label="Sessões"
+            value={String(data.points.length)}
+            sub="registradas"
+          />
+        </div>
+      </StaggerItem>
 
-      {/* Gráfico */}
-      <Card>
-        <h3 className="text-xs font-semibold text-text-3 uppercase tracking-wider mb-3">
-          Evolução de carga
-        </h3>
-        <div style={{ width: '100%', height: 220 }}>
-          <ResponsiveContainer>
-            <LineChart data={data.points}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f1f26" />
-              <XAxis
-                dataKey="date"
-                stroke="#52525b"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#52525b"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-                width={36}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: '#0f0f12',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 12,
-                  color: '#d4d4d8',
-                  fontSize: 12,
-                }}
-                formatter={(value: number, name: string) => {
-                  if (name === 'oneRM') return [`${value} kg`, '1RM est.'];
-                  return [`${value} kg`, 'Carga máx'];
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="maxWeight"
-                stroke="#22d3a8"
-                strokeWidth={2.5}
-                dot={{ r: 3, fill: '#22d3a8' }}
-                activeDot={{ r: 5 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="oneRM"
-                stroke="#a78bfa"
-                strokeWidth={1.5}
-                strokeDasharray="4 4"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex items-center justify-center gap-4 mt-2 text-[10px] text-text-3">
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 bg-accent rounded-full" /> Carga máx
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 bg-purple rounded-full opacity-70" />{' '}
-            1RM est.
-          </span>
-        </div>
-      </Card>
+      {/* Gráfico principal */}
+      <StaggerItem delay={0.1}>
+        <Card>
+          <ForceLineChart
+            data={chartData}
+            title="Evolução de Carga"
+            color="#06b6d4"
+            colorSecondary="#a78bfa"
+            height={240}
+            formatValue={(v) => `${Math.round(v)}kg`}
+          />
+
+          <div className="flex items-center justify-center gap-4 mt-3 text-[10px] font-mono-ui uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 text-text-3">
+              <span className="w-3 h-0.5 bg-accent rounded-full" />
+              Carga
+            </span>
+            <span className="flex items-center gap-1.5 text-text-3">
+              <span className="w-3 h-0.5 bg-sci rounded-full opacity-70" />
+              1RM est.
+            </span>
+          </div>
+        </Card>
+      </StaggerItem>
 
       {/* Faixa alvo */}
       {data.targetMin && data.targetMax && (
-        <div className="text-center text-[11px] text-text-3">
-          🎯 Faixa alvo: <strong className="text-text-1">{data.targetMin}–{data.targetMax}</strong> reps
-        </div>
+        <StaggerItem delay={0.15}>
+          <div className="text-center text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
+            🎯 Faixa alvo:{' '}
+            <strong className="text-text-1">
+              {data.targetMin}–{data.targetMax}
+            </strong>{' '}
+            reps
+          </div>
+        </StaggerItem>
       )}
 
-      {/* 🔮 Previsão de PR */}
+      {/* Previsão de PR */}
       {nextForecast && nextForecast.weeksToTarget !== null && (
-        <section className="bg-purple/5 border border-purple/20 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-purple">
-              🔮 Previsão de PR
-            </h3>
-            <Badge variant="purple">
-              {nextForecast.rate.confidenceLevel === 'alta'
-                ? '● alta'
-                : nextForecast.rate.confidenceLevel === 'média'
-                ? '● média'
-                : '● baixa'}
-            </Badge>
-          </div>
+        <StaggerItem delay={0.2}>
+          <Card variant="sci">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs font-bold text-sci font-display">
+                🔮 Previsão de PR
+              </div>
+              <Badge variant="sci">
+                {nextForecast.rate.confidenceLevel}
+              </Badge>
+            </div>
 
-          <ForecastItem
-            label="Próximo passo"
-            target={nextForecast.target}
-            forecast={nextForecast}
-            accent="accent"
-          />
-
-          {stretchForecast && stretchForecast.weeksToTarget !== null && (
             <ForecastItem
-              label="Meta esticada"
-              target={stretchForecast.target}
-              forecast={stretchForecast}
-              accent="purple"
+              label="Próximo passo"
+              target={nextForecast.target}
+              forecast={nextForecast}
+              color="accent"
             />
-          )}
 
-          {/* Taxa de progresso */}
-          <div className="bg-bg-2 rounded-xl px-3 py-2 text-[11px]">
-            <div className="flex justify-between">
-              <span className="text-text-3">Taxa de progresso</span>
-              <span
-                className={`font-semibold ${
-                  nextForecast.rate.slopePerWeek > 0
-                    ? 'text-accent'
-                    : 'text-danger'
-                }`}
-              >
-                {nextForecast.rate.slopePerWeek > 0 ? '+' : ''}
-                {nextForecast.rate.slopePerWeek} kg/semana
-              </span>
-            </div>
-            <div className="text-[10px] text-text-3 mt-1">
-              Baseado em {nextForecast.rate.dataPoints} sessões
-            </div>
-          </div>
+            {stretchForecast && stretchForecast.weeksToTarget !== null && (
+              <div className="mt-3">
+                <ForecastItem
+                  label="Meta esticada"
+                  target={stretchForecast.target}
+                  forecast={stretchForecast}
+                  color="sci"
+                />
+              </div>
+            )}
 
-          <div className="text-[10px] text-text-3 pt-2 border-t border-white/[0.05]">
-            Base: Stone (1981), Rhea (2002), Helms (2018)
-          </div>
-        </section>
+            <div className="bg-bg-2 rounded-xl px-3 py-2 mt-3 text-[11px] font-mono-ui">
+              <div className="flex justify-between">
+                <span className="text-text-3 uppercase tracking-wider">
+                  Taxa
+                </span>
+                <span
+                  className={`font-bold ${
+                    nextForecast.rate.slopePerWeek > 0
+                      ? 'text-accent'
+                      : 'text-danger'
+                  }`}
+                >
+                  {nextForecast.rate.slopePerWeek > 0 ? '+' : ''}
+                  {nextForecast.rate.slopePerWeek} kg/sem
+                </span>
+              </div>
+              <div className="text-[9px] text-text-3 mt-1">
+                {nextForecast.rate.dataPoints} sessões
+              </div>
+            </div>
+
+            <div className="text-[9px] text-text-3 pt-2 mt-3 border-t border-white/[0.04] italic font-mono-ui uppercase tracking-wider">
+              Stone (1981) · Rhea (2002) · Helms (2018)
+            </div>
+          </Card>
+        </StaggerItem>
       )}
     </div>
   );
 }
-
-/* ══════════════════════════════════════════════════════════
-   COMPONENTES
-   ══════════════════════════════════════════════════════════ */
 
 function MiniCard({
   label,
@@ -377,17 +335,17 @@ function MiniCard({
     <div
       className={`rounded-2xl p-3.5 border ${
         accent
-          ? 'bg-purple/10 border-purple/20'
-          : 'bg-bg-1 border-white/[0.06]'
+          ? 'bg-sci/10 border-sci/25 shadow-card'
+          : 'bg-bg-1 border-white/[0.06] shadow-card'
       }`}
     >
-      <div className="text-[10px] text-text-3 uppercase tracking-wider font-medium">
+      <div className="text-[9px] text-text-3 uppercase tracking-[0.15em] font-mono-ui font-bold">
         {label}
       </div>
       <div
-        className={`text-lg font-bold tracking-tight mt-0.5 ${
+        className={`text-xl font-bold tracking-tight mt-1 font-mono-ui ${
           accent
-            ? 'text-purple'
+            ? 'text-sci'
             : positive
             ? 'text-accent'
             : 'text-text-0'
@@ -396,7 +354,9 @@ function MiniCard({
         {value}
       </div>
       {sub && (
-        <div className="text-[10px] text-text-3 mt-0.5">{sub}</div>
+        <div className="text-[9px] text-text-3 mt-0.5 font-mono-ui">
+          {sub}
+        </div>
       )}
     </div>
   );
@@ -406,7 +366,7 @@ function ForecastItem({
   label,
   target,
   forecast,
-  accent,
+  color,
 }: {
   label: string;
   target: number;
@@ -416,9 +376,9 @@ function ForecastItem({
     gap: number;
     note: string;
   };
-  accent: 'accent' | 'purple';
+  color: 'accent' | 'sci';
 }) {
-  const color = accent === 'accent' ? 'text-accent' : 'text-purple';
+  const c = color === 'accent' ? 'text-accent' : 'text-sci';
 
   function formatDate(ts: number) {
     return new Date(ts).toLocaleDateString('pt-BR', {
@@ -429,38 +389,41 @@ function ForecastItem({
   }
 
   return (
-    <div className="bg-bg-2 rounded-xl px-3 py-2.5 space-y-1">
-      <div className="flex justify-between items-center">
-        <span className="text-[10px] text-text-3 uppercase tracking-wider">
+    <div className="bg-bg-2 rounded-xl px-3 py-2.5">
+      <div className="flex justify-between items-center mb-1.5">
+        <span className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui">
           {label}
         </span>
-        <span className={`text-sm font-bold ${color}`}>{target} kg</span>
+        <span className={`text-sm font-bold font-mono-ui ${c}`}>
+          {target} kg
+        </span>
       </div>
 
       {forecast.weeksToTarget !== null ? (
         <>
-          <div className="flex justify-between text-[11px]">
+          <div className="flex justify-between text-[11px] font-mono-ui">
             <span className="text-text-2">
-              Faltam <strong className="text-text-0">{forecast.gap} kg</strong>
+              <strong className="text-text-0">{forecast.gap} kg</strong>
             </span>
             <span className="text-text-2">
-              ~
-              <strong className="text-text-0">
+              ~<strong className="text-text-0">
                 {forecast.weeksToTarget} sem
               </strong>
             </span>
           </div>
           {forecast.estimatedDate && (
-            <div className="text-[10px] text-text-3">
+            <div className="text-[9px] text-text-3 mt-1 font-mono-ui uppercase tracking-wider">
               📅 {formatDate(forecast.estimatedDate)}
             </div>
           )}
         </>
       ) : (
-        <div className="text-[11px] text-text-3">Sem previsão confiável</div>
+        <div className="text-[10px] text-text-3 font-mono-ui">
+          Sem previsão
+        </div>
       )}
 
-      <div className="text-[10px] text-text-3 italic pt-1">
+      <div className="text-[9px] text-text-3 italic pt-1.5 font-mono-ui">
         {forecast.note}
       </div>
     </div>

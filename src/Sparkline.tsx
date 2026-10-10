@@ -1,0 +1,1 @@
+export { Sparkline as default } from './ForceCharts';

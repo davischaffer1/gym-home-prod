@@ -88,7 +88,7 @@ export default function RestTimer({ seconds, onClose }: Props) {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 max-w-md mx-auto z-50">
-      <div className="bg-bg-1 border border-zinc-700 rounded-2xl p-4 shadow-2xl space-y-3">
+      <div className="bg-bg-1 border border-white/[0.08] rounded-2xl p-4 shadow-2xl space-y-3">
         {/* Barra de progresso */}
         <div className="w-full h-1.5 bg-bg-2 rounded-full overflow-hidden">
           <div

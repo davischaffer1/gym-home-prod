@@ -12,6 +12,7 @@
   "dependencies": {
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
+    "framer-motion": "^14.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "recharts": "^3.10.1"

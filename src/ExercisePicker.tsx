@@ -29,9 +29,9 @@ export default function ExercisePicker({ onAdd, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center">
-      <div className="bg-bg-0 w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl max-h-[90vh] flex flex-col border border-zinc-800">
+      <div className="bg-bg-0 w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl max-h-[90vh] flex flex-col border border-white/[0.06]">
         {/* Cabeçalho */}
-        <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+        <div className="p-4 border-b border-white/[0.06] flex justify-between items-center">
           <h2 className="text-lg font-bold">Adicionar exercício</h2>
           <button
             onClick={onClose}
@@ -42,7 +42,7 @@ export default function ExercisePicker({ onAdd, onClose }: Props) {
         </div>
 
         {/* Busca */}
-        <div className="p-4 space-y-3 border-b border-zinc-800">
+        <div className="p-4 space-y-3 border-b border-white/[0.06]">
           <input
             autoFocus
             className="w-full bg-bg-1 rounded-lg px-3 py-2 outline-none"

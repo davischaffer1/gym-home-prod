@@ -88,7 +88,7 @@ export default function AchievementsView({ onBack }: Props) {
                     className={`rounded-2xl p-4 border flex items-start gap-3 ${
                       isUnlocked
                         ? 'bg-emerald-950/40 border-emerald-800'
-                        : 'bg-bg-1 border-zinc-800'
+                        : 'bg-bg-1 border-white/[0.06]'
                     }`}
                   >
                     <div
