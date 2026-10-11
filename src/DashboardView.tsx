@@ -19,13 +19,13 @@ import { ForceLineChart, ForceBarChart } from './ForceCharts';
 import { SubScreen, Card, SectionTitle, Badge } from './ui';
 import { StaggerItem } from './Motion';
 import { motion } from 'framer-motion';
+import EnergyBalanceCard from './EnergyBalanceCard';
 
 interface Props {
   onBack: () => void;
 }
 
 export default function DashboardView({ onBack }: Props) {
-  // ══════════════ TODOS OS HOOKS NO TOPO ══════════════
   const sessions = useLiveQuery(async () => {
     const all = await db.sessions
       .filter((s) => s.finishedAt !== undefined)
@@ -80,20 +80,15 @@ export default function DashboardView({ onBack }: Props) {
     return best;
   }, []);
 
-  // ══════════════ RETORNO CONDICIONAL ══════════════
   if (!sessions || !sets || !exercises) {
     return (
       <SubScreen title="Análise" onBack={onBack}>
-        <div className="flex items-center justify-center py-20">
-          <p className="text-text-3 font-mono-ui uppercase tracking-wider text-[11px]">
-            Carregando...
-          </p>
-        </div>
+        <p className="text-text-3 text-center py-10 font-mono-ui uppercase tracking-wider text-[11px]">
+          Carregando...
+        </p>
       </SubScreen>
     );
   }
-
-  // ══════════════ CÁLCULOS ══════════════
 
   const now = new Date();
   const startOfWeek = new Date(now);
@@ -122,17 +117,14 @@ export default function DashboardView({ onBack }: Props) {
 
   const totalVolume = sets.reduce((acc, s) => acc + s.reps * s.weight, 0);
 
-  // Séries efetivas
   const effectiveSets = countEffectiveSetsByGroup(sets, exercises, 1);
   const visibleGroups = effectiveSets.filter(
     (g) => g.count > 0 || g.status === 'baixo'
   );
 
-  // Ativação de fibras
   const fiberVolume = countFiberVolumeByGroup(sets, exercises, 1);
   const visibleFiber = fiberVolume.filter((g) => g.totalEffective > 0);
 
-  // Readiness
   const readiness = (() => {
     if (sessions.length === 0) return null;
     const lastSession = sessions[0];
@@ -148,7 +140,6 @@ export default function DashboardView({ onBack }: Props) {
     });
   })();
 
-  // Loads (session-RPE)
   const dailyLoads = (() => {
     const map = new Map<string, number>();
     for (const s of sessions) {
@@ -171,7 +162,6 @@ export default function DashboardView({ onBack }: Props) {
   const acwr = dailyLoads.length > 0 ? calculateACWR(dailyLoads) : null;
   const strain = dailyLoads.length > 0 ? calculateStrain(dailyLoads) : null;
 
-  // Gráfico: volume semanal (últimas 8 semanas)
   const weeklyVolume = (() => {
     const data: { label: string; value: number }[] = [];
     for (let i = 7; i >= 0; i--) {
@@ -201,7 +191,6 @@ export default function DashboardView({ onBack }: Props) {
     return data;
   })();
 
-  // Gráfico: treinos por semana
   const weeklySessions = (() => {
     const data: { label: string; value: number }[] = [];
     for (let i = 7; i >= 0; i--) {
@@ -221,7 +210,6 @@ export default function DashboardView({ onBack }: Props) {
     return data;
   })();
 
-  // Gráfico: carga diária (últimos 14 dias)
   const dailyLoadChart = (() => {
     const data: { label: string; value: number }[] = [];
     for (let i = 13; i >= 0; i--) {
@@ -237,7 +225,6 @@ export default function DashboardView({ onBack }: Props) {
     return data;
   })();
 
-  // Deload
   const deloadInfo = (() => {
     const byExercise = new Map<number, typeof sets>();
     for (const s of sets) {
@@ -284,12 +271,17 @@ export default function DashboardView({ onBack }: Props) {
     }
   }
 
-  // ══════════════ RENDER ══════════════
   return (
     <SubScreen title="Análise" onBack={onBack}>
-      {/* Deload banner */}
+      {/* 🔥 Balanço energético (novo) */}
+      <StaggerItem delay={0}>
+        <div className="mb-4">
+          <EnergyBalanceCard />
+        </div>
+      </StaggerItem>
+
       {deloadInfo.yes && (
-        <StaggerItem delay={0}>
+        <StaggerItem delay={0.03}>
           <Card variant="accent" glow className="mb-4">
             <div className="flex items-start gap-3 mb-3">
               <span className="text-2xl flex-shrink-0">⚠️</span>
@@ -315,28 +307,24 @@ export default function DashboardView({ onBack }: Props) {
         </StaggerItem>
       )}
 
-      {/* Readiness */}
       {readiness && (
         <StaggerItem delay={0.05}>
           <ReadinessCard data={readiness} />
         </StaggerItem>
       )}
 
-      {/* ACWR */}
       {acwr && (
         <StaggerItem delay={0.1}>
           <ACWRCard data={acwr} />
         </StaggerItem>
       )}
 
-      {/* Strain */}
       {strain && strain.weeklyLoad > 0 && (
         <StaggerItem delay={0.15}>
           <StrainCard data={strain} />
         </StaggerItem>
       )}
 
-      {/* Stats rápidos */}
       <StaggerItem delay={0.2}>
         <div className="grid grid-cols-2 gap-2 mb-4 mt-4">
           <MiniStat
@@ -360,11 +348,7 @@ export default function DashboardView({ onBack }: Props) {
             value={formatTotalTime(totalMinutes)}
             label="Tempo"
           />
-          <MiniStat
-            icon="🔁"
-            value={String(sets.length)}
-            label="Séries"
-          />
+          <MiniStat icon="🔁" value={String(sets.length)} label="Séries" />
           <MiniStat
             icon="📦"
             value={`${Math.round(totalVolume / 1000)}t`}
@@ -373,7 +357,6 @@ export default function DashboardView({ onBack }: Props) {
         </div>
       </StaggerItem>
 
-      {/* Gráfico: Volume semanal */}
       <StaggerItem delay={0.25}>
         <Card className="mb-4">
           <ForceBarChart
@@ -388,7 +371,6 @@ export default function DashboardView({ onBack }: Props) {
         </Card>
       </StaggerItem>
 
-      {/* Gráfico: Carga diária */}
       <StaggerItem delay={0.3}>
         <Card className="mb-4">
           <ForceLineChart
@@ -400,7 +382,6 @@ export default function DashboardView({ onBack }: Props) {
         </Card>
       </StaggerItem>
 
-      {/* Gráfico: Treinos por semana */}
       <StaggerItem delay={0.35}>
         <Card className="mb-4">
           <ForceBarChart
@@ -412,7 +393,6 @@ export default function DashboardView({ onBack }: Props) {
         </Card>
       </StaggerItem>
 
-      {/* Séries efetivas */}
       {visibleGroups.length > 0 && (
         <StaggerItem delay={0.4}>
           <Card className="mb-4">
@@ -437,7 +417,6 @@ export default function DashboardView({ onBack }: Props) {
         </StaggerItem>
       )}
 
-      {/* Ativação de fibras */}
       {visibleFiber.length > 0 && (
         <StaggerItem delay={0.45}>
           <Card className="mb-4">
@@ -462,7 +441,6 @@ export default function DashboardView({ onBack }: Props) {
         </StaggerItem>
       )}
 
-      {/* Próximo PR */}
       {bestForecast?.forecast &&
         bestForecast.forecast.weeksToTarget !== null && (
           <StaggerItem delay={0.5}>
@@ -515,7 +493,6 @@ export default function DashboardView({ onBack }: Props) {
           </StaggerItem>
         )}
 
-      {/* Últimas sessões */}
       <StaggerItem delay={0.55}>
         <Card>
           <div className="text-xs font-bold text-text-0 font-display mb-3">
@@ -818,8 +795,14 @@ function EffectiveSetBar({
       <div className="flex justify-between items-center mb-1.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-text-0">{group.group}</span>
-          <span className={`text-[9px] font-mono-ui uppercase tracking-wider font-bold ${colorText}`}>
-            {status === 'baixo' ? '↓ abaixo' : status === 'alto' ? '↑ alto' : '✓ ok'}
+          <span
+            className={`text-[9px] font-mono-ui uppercase tracking-wider font-bold ${colorText}`}
+          >
+            {status === 'baixo'
+              ? '↓ abaixo'
+              : status === 'alto'
+              ? '↑ alto'
+              : '✓ ok'}
           </span>
         </div>
         <span className="text-xs font-mono-ui text-text-2">
@@ -881,7 +864,9 @@ function FiberBar({
       <div className="flex justify-between items-center mb-1.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-text-0">{group.group}</span>
-          <span className={`text-[9px] font-mono-ui uppercase tracking-wider font-bold ${statusColor}`}>
+          <span
+            className={`text-[9px] font-mono-ui uppercase tracking-wider font-bold ${statusColor}`}
+          >
             {statusLabel}
           </span>
         </div>

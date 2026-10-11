@@ -9,7 +9,6 @@ import {
   getOrCreateGoal,
   pct,
   getWeeklyAverages,
-  getWaterGoal,
   getWater,
   addWater,
   resetWater,
@@ -17,9 +16,11 @@ import {
 import FoodPicker from './FoodPicker';
 import NutritionGoalView from './NutritionGoalView';
 import NutritionAnalysisView from './NutritionAnalysisView';
+import EnergyBalanceCard from './EnergyBalanceCard';
 import { SubScreen, Card, Button, Badge } from './ui';
 import { StaggerItem, PunchButton } from './Motion';
 import { motion } from 'framer-motion';
+import EnergyBalanceView from './EnergyBalanceView';
 
 interface Props {
   onBack: () => void;
@@ -39,6 +40,7 @@ export default function DietView({ onBack }: Props) {
   const [pickerMeal, setPickerMeal] = useState<MealType | null>(null);
   const [showGoalView, setShowGoalView] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showEnergy, setShowEnergy] = useState(false);
 
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
   const goal = useLiveQuery(() => db.nutritionGoals.toCollection().first(), []);
@@ -70,6 +72,11 @@ export default function DietView({ onBack }: Props) {
 
   if (showAnalysis) {
     return <NutritionAnalysisView onBack={() => setShowAnalysis(false)} />;
+  }
+
+  if (showEnergy) {
+    // Import dinâmico pra evitar carregar sem necessidade
+    return <EnergyBalanceView onBack={() => setShowEnergy(false)} />;
   }
 
   async function handleAddEntry(entry: {
@@ -149,6 +156,13 @@ export default function DietView({ onBack }: Props) {
       action={
         <div className="flex gap-1">
           <button
+            onClick={() => setShowEnergy(true)}
+            className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-2"
+            title="Balanço energético"
+          >
+            🔥
+          </button>
+          <button
             onClick={() => setShowAnalysis(true)}
             className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-2"
           >
@@ -193,8 +207,19 @@ export default function DietView({ onBack }: Props) {
         </button>
       </div>
 
-      {/* Ring de calorias */}
+      {/* 🔥 Balanço energético */}
       <StaggerItem delay={0}>
+        <div className="mb-4">
+          <EnergyBalanceCard
+            date={selectedDate}
+            compact
+            onNavigate={() => setShowEnergy(true)}
+          />
+        </div>
+      </StaggerItem>
+
+      {/* Calorias */}
+      <StaggerItem delay={0.03}>
         <Card className="mb-4">
           <div className="text-center mb-4">
             <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-2">
@@ -256,7 +281,7 @@ export default function DietView({ onBack }: Props) {
       </StaggerItem>
 
       {/* Água */}
-      <StaggerItem delay={0.03}>
+      <StaggerItem delay={0.06}>
         <Card className="mb-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -321,7 +346,7 @@ export default function DietView({ onBack }: Props) {
           (goal.targetKcal / 100);
 
         return (
-          <StaggerItem key={mealType} delay={0.05 + idx * 0.03}>
+          <StaggerItem key={mealType} delay={0.09 + idx * 0.03}>
             <Card className="mb-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
