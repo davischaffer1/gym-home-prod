@@ -643,42 +643,42 @@ export function BottomNav({
   tabs: {
     id: string;
     label: string;
-    icon: 'home' | 'chart' | 'plus' | 'calendar' | 'user' | 'trend';
+    icon: 'home' | 'chart' | 'plus' | 'calendar' | 'user' | 'trend' | 'apple';
   }[];
   activeTab: string;
   onChange: (id: string) => void;
 }) {
+  const cols = tabs.length;
+
+  // Mapeia grid-cols dinamicamente
+  const gridCols: Record<number, string> = {
+    3: 'grid-cols-3',
+    4: 'grid-cols-4',
+    5: 'grid-cols-5',
+    6: 'grid-cols-6',
+    7: 'grid-cols-7',
+  };
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-0/90 backdrop-blur-2xl border-t border-white/[0.06] safe-bottom">
-      <div className="max-w-lg mx-auto grid grid-cols-5 h-[72px] relative">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-0/95 backdrop-blur-2xl border-t border-white/[0.06] safe-bottom">
+      <div
+        className={`max-w-lg mx-auto grid ${
+          gridCols[cols] ?? 'grid-cols-6'
+        } h-[68px] relative`}
+      >
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
-
-          // Botão central (FAB)
-          if (tab.icon === 'plus') {
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onChange(tab.id)}
-                className="relative flex items-center justify-center active:scale-90 transition-transform"
-              >
-                <div className="w-14 h-14 -mt-7 rounded-full bg-accent text-black flex items-center justify-center shadow-glow-accent animate-pulse-glow">
-                  <NavIcon name="plus" />
-                </div>
-              </button>
-            );
-          }
 
           return (
             <button
               key={tab.id}
               onClick={() => onChange(tab.id)}
-              className="relative flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform"
+              className="relative flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-transform min-w-0"
             >
               {/* Indicador superior */}
               <span
                 className={`absolute top-0 h-[2px] rounded-full bg-accent transition-all duration-300 ${
-                  active ? 'w-10 opacity-100 shadow-glow-accent' : 'w-0 opacity-0'
+                  active ? 'w-6 opacity-100 shadow-glow-accent' : 'w-0 opacity-0'
                 }`}
               />
 
@@ -690,7 +690,7 @@ export function BottomNav({
                 <NavIcon name={tab.icon} active={active} />
               </div>
               <span
-                className={`text-[9px] font-mono-ui uppercase tracking-[0.12em] transition-colors duration-200 ${
+                className={`text-[8px] font-mono-ui uppercase tracking-[0.08em] transition-colors duration-200 truncate max-w-full px-1 ${
                   active ? 'text-accent font-bold' : 'text-text-3'
                 }`}
               >
