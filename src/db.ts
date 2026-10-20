@@ -303,12 +303,13 @@ export async function saveProfile(p: Omit<Profile, 'id' | 'updatedAt'>) {
 }
 
 export async function getLastSet(exerciseId: number) {
-  const all = await db.sets
-    .where('exerciseId')
-    .equals(exerciseId)
-    .reverse()
-    .sortBy('createdAt');
-  return all[0];
+  // Atenção: `sortBy` ordena ascendente e ignora o `reverse()` anterior —
+  // a versão antiga devolvia a série MAIS ANTIGA do exercício.
+  const all = await db.sets.where('exerciseId').equals(exerciseId).toArray();
+  if (all.length === 0) return undefined;
+  return all.reduce((latest, s) =>
+    s.createdAt > latest.createdAt ? s : latest
+  );
 }
 
 export async function getFinishedSessions() {

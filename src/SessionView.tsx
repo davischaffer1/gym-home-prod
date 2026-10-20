@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Exercise, type SetType } from './db';
 import RestTimer from './RestTimer';
@@ -46,6 +46,9 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
   const [showNotes, setShowNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+  // Reinicia o RestTimer a cada série: o componente é remontado com `key`.
+  const [restSeq, setRestSeq] = useState(0);
+  const [restAdjust, setRestAdjust] = useState(0);
 
   // PR celebration
   const [prCelebration, setPrCelebration] = useState<{
@@ -66,12 +69,32 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
       if (savedId) {
         const existing = await db.sessions.get(savedId);
         if (existing && !existing.finishedAt) {
-          if (!cancelled) {
-            setSessionId(savedId);
-            if (existing.notes !== undefined) setNotesDraft(existing.notes);
+          // A sessão ativa é global: só retoma se for DESTE treino.
+          // Antes, abrir o treino B com o A aberto misturava as séries.
+          if (existing.workoutId !== workoutId) {
+            const [other, mine] = await Promise.all([
+              db.workouts.get(existing.workoutId),
+              db.workouts.get(workoutId),
+            ]);
+            const shouldClose = window.confirm(
+              `O treino "${other?.name ?? 'anterior'}" ainda está aberto.\n\n` +
+                `Encerrar ele e começar "${mine?.name ?? 'este'}"?`
+            );
+            if (!shouldClose) {
+              if (!cancelled) onFinish();
+              return;
+            }
+            await db.sessions.update(savedId, { finishedAt: Date.now() });
+            await clearActiveSessionNotification();
+            clearActiveSession();
+          } else {
+            if (!cancelled) {
+              setSessionId(savedId);
+              if (existing.notes !== undefined) setNotesDraft(existing.notes);
+            }
+            await showActiveSessionNotification('Treino', existing.startedAt);
+            return;
           }
-          await showActiveSessionNotification('Treino', existing.startedAt);
-          return;
         } else {
           clearActiveSession();
         }
@@ -115,33 +138,67 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
     }
   }, [session?.notes]);
 
+  /**
+   * Encerra a sessão de forma segura: grava `finishedAt` (somando o tempo em
+   * pausa) e SÓ DEPOIS limpa a sessão ativa. Antes era o contrário — se o
+   * update falhasse, o treino ficava aberto para sempre e fora do histórico.
+   * Devolve true se realmente encerrou.
+   */
+  async function closeSession({ ask = true }: { ask?: boolean } = {}) {
+    if (!sessionId || !session) return false;
+
+    if (
+      ask &&
+      !window.confirm('Encerrar o treino? As séries já registradas ficam salvas.')
+    ) {
+      return false;
+    }
+
+    const now = Date.now();
+    const pausedMs =
+      (session.totalPausedMs ?? 0) +
+      (session.pausedAt ? Math.max(0, now - session.pausedAt) : 0);
+
+    try {
+      await db.sessions.update(sessionId, {
+        finishedAt: now,
+        pausedAt: undefined,
+        totalPausedMs: pausedMs,
+      });
+    } catch (err) {
+      console.error('Falha ao encerrar a sessão', err);
+      window.alert(
+        'Não consegui encerrar agora. Tente novamente — nada foi perdido.'
+      );
+      return false;
+    }
+
+    clearActiveSession();
+    await clearActiveSessionNotification();
+    setRestSeconds(null);
+    setFinished(true);
+    return true;
+  }
+
+  function finish() {
+    void closeSession();
+  }
+
   useEffect(() => {
     const cleanup = listenToNotificationActions(async (action) => {
       if (action === 'finish' || action === 'finish-session') {
-        if (sessionId) {
-          await clearActiveSession();
-          await clearActiveSessionNotification();
-          await db.sessions.update(sessionId, { finishedAt: Date.now() });
-          setFinished(true);
-        }
+        await closeSession({ ask: false });
       }
       if (action === '+30s') {
-        setRestSeconds((r) => (r ?? 0) + 30);
+        setRestAdjust((n) => n + 1);
       }
       if (action === 'skip') {
         setRestSeconds(null);
       }
     });
     return cleanup;
-  }, [sessionId]);
-
-  async function finish() {
-    if (!sessionId) return;
-    await clearActiveSession();
-    await clearActiveSessionNotification();
-    await db.sessions.update(sessionId, { finishedAt: Date.now() });
-    setFinished(true);
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, session?.pausedAt, session?.totalPausedMs]);
 
   async function togglePause() {
     if (!sessionId || !session) return;
@@ -325,7 +382,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-40">
+      <div className="flex-1 overflow-y-auto pb-52">
         <div className="max-w-lg mx-auto pt-4">
           <SwipeableExerciseView
             exercises={exercises}
@@ -337,7 +394,10 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
                 exercise={ex}
                 sessionId={sessionId}
                 defaultRest={profile?.restSeconds ?? 90}
-                onSetAdded={(sec) => setRestSeconds(sec)}
+                onSetAdded={(sec) => {
+                  setRestSeconds(sec);
+                  setRestSeq((n) => n + 1); // remonta o timer do zero
+                }}
                 isActive={idx === currentExerciseIndex}
                 onPR={handlePR}
               />
@@ -348,7 +408,9 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
 
       {restSeconds !== null && (
         <RestTimer
+          key={restSeq}
           seconds={restSeconds}
+          adjustSignal={restAdjust}
           onClose={() => setRestSeconds(null)}
         />
       )}
@@ -441,6 +503,11 @@ function ExerciseCard({
   const [editWeight, setEditWeight] = useState('');
   const [editRpe, setEditRpe] = useState<number | undefined>(undefined);
 
+  // Guardas de gravação: evitam série duplicada por duplo toque.
+  const savingRef = useRef(false);
+  // Melhor carga já registrada NESTA sessão para este exercício.
+  const sessionBestRef = useRef(0);
+
   useEffect(() => {
     if (tutStart === null) return;
     const t = setInterval(() => {
@@ -452,12 +519,17 @@ function ExerciseCard({
   const lastSet = useLiveQuery(
     async () => {
       try {
+        // `sortBy` reordena ascendente e anula o `reverse()`: o código antigo
+        // devolvia a série MAIS ANTIGA, não a última.
         const all = await db.sets
           .where('exerciseId')
           .equals(exercise.id!)
-          .reverse()
-          .sortBy('createdAt');
-        return all.find((s) => s && s.sessionId !== sessionId) ?? null;
+          .toArray();
+        const previous = all.filter((s) => s && s.sessionId !== sessionId);
+        if (previous.length === 0) return null;
+        return previous.reduce((best, s) =>
+          s.createdAt > best.createdAt ? s : best
+        );
       } catch {
         return null;
       }
@@ -672,31 +744,55 @@ function ExerciseCard({
   );
 
   async function addSet(customReps?: number, customWeight?: number) {
+    if (savingRef.current) return;
     const r = customReps ?? parseInt(reps, 10);
     const w = customWeight ?? parseFloat(weight.replace(',', '.'));
-    if (!r || isNaN(r) || isNaN(w)) return;
+    if (!r || isNaN(r) || isNaN(w)) {
+      vibrate(60); // feedback: falta preencher, o botão não está quebrado
+      return;
+    }
 
-    const nextNumber = allSets.length + 1;
+    savingRef.current = true;
     const tutSeconds = tutElapsed > 0 ? tutElapsed : undefined;
 
-    await db.sets.add({
-      sessionId,
-      exerciseId: exercise.id!,
-      setNumber: nextNumber,
-      reps: r,
-      weight: w,
-      createdAt: Date.now(),
-      type,
-      tutSeconds,
-      note: note.trim() || undefined,
-      rpe,
-    });
+    try {
+      // Transação: o número da série é calculado e gravado de forma atômica,
+      // então nem duplo toque no "+" gera duas S3.
+      await db.transaction('rw', db.sets, async () => {
+        const existing = await db.sets
+          .where('sessionId')
+          .equals(sessionId)
+          .and((s) => s.exerciseId === exercise.id!)
+          .toArray();
+        const max = existing.reduce((m, s) => Math.max(m, s.setNumber ?? 0), 0);
 
-    // 🏆 Detecta PR e chama celebração
-    const isPR = type !== 'warmup' && pr != null && w > pr.weight;
-    const isFirstSet = !pr && type !== 'warmup' && w > 0;
+        await db.sets.add({
+          sessionId,
+          exerciseId: exercise.id!,
+          setNumber: max + 1,
+          reps: r,
+          weight: w,
+          createdAt: Date.now(),
+          type,
+          tutSeconds,
+          note: note.trim() || undefined,
+          rpe,
+        });
+      });
+    } catch (err) {
+      console.error('Falha ao salvar a série', err);
+      savingRef.current = false;
+      return;
+    }
+    savingRef.current = false;
 
-    if (isPR || isFirstSet) {
+    // PR só quando supera o melhor histórico E o melhor já feito nesta sessão.
+    // (antes, no primeiro treino de um exercício, TODA série abria o modal)
+    const bestBefore = Math.max(pr?.weight ?? 0, sessionBestRef.current);
+    const isPR = type !== 'warmup' && w > bestBefore;
+    if (isPR) sessionBestRef.current = w;
+
+    if (isPR) {
       const oneRM = predict1RM({ weight: w, reps: r, rpe, type });
       if (onPR) {
         onPR({
