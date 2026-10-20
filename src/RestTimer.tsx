@@ -111,7 +111,7 @@ export default function RestTimer({ seconds, adjustSignal = 0, onClose }: Props)
             <span className="font-mono-ui text-3xl font-bold leading-none tabular-nums text-text-0">
               {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
             </span>
-            <span className="text-[10px] font-mono-ui uppercase tracking-wider text-text-3">
+            <span className="text-[11px] font-mono-ui uppercase tracking-wider text-text-3">
               {remaining === 0 ? 'concluído' : paused ? 'pausado' : 'descanso'}
             </span>
           </div>

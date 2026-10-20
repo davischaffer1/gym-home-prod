@@ -248,7 +248,7 @@ export function ForceLineChart({
   return (
     <div className="w-full">
       {title && (
-        <div className="text-[10px] text-text-3 uppercase tracking-[0.15em] font-mono-ui mb-2 px-1">
+        <div className="text-[11px] text-text-3 uppercase tracking-[0.15em] font-mono-ui mb-2 px-1">
           {title}
         </div>
       )}
@@ -392,7 +392,7 @@ export function ForceBarChart({
   return (
     <div className="w-full">
       {title && (
-        <div className="text-[10px] text-text-3 uppercase tracking-[0.15em] font-mono-ui mb-2 px-1">
+        <div className="text-[11px] text-text-3 uppercase tracking-[0.15em] font-mono-ui mb-2 px-1">
           {title}
         </div>
       )}

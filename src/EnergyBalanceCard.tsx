@@ -39,7 +39,7 @@ export default function EnergyBalanceCard({
         <div className="flex items-center gap-2">
           <span className="text-lg">🔥</span>
           <div className="text-left">
-            <div className="text-[9px] text-text-3 font-mono-ui uppercase tracking-wider">
+            <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
               Balanço
             </div>
             <div
@@ -61,7 +61,7 @@ export default function EnergyBalanceCard({
               ? `−${formatFatGrams(balance.fatLossGrams)}`
               : `+${formatFatGrams(balance.fatGainGrams)}`}
           </div>
-          <div className="text-[9px] text-text-3 font-mono-ui uppercase tracking-wider">
+          <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
             gordura
           </div>
         </div>
@@ -72,7 +72,7 @@ export default function EnergyBalanceCard({
   return (
     <div className={`${bgColor} border rounded-2xl p-4 shadow-card`}>
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold">
+        <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold">
           🔥 Balanço Energético
         </div>
         <span
@@ -99,7 +99,7 @@ export default function EnergyBalanceCard({
 
       <div className="grid grid-cols-3 gap-2 text-center">
         <div>
-          <div className="text-[9px] text-text-3 font-mono-ui uppercase tracking-wider">
+          <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
             Gasto
           </div>
           <div className="text-xs font-bold font-mono-ui text-text-0 mt-0.5">
@@ -107,7 +107,7 @@ export default function EnergyBalanceCard({
           </div>
         </div>
         <div>
-          <div className="text-[9px] text-text-3 font-mono-ui uppercase tracking-wider">
+          <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
             Consumido
           </div>
           <div className="text-xs font-bold font-mono-ui text-text-0 mt-0.5">
@@ -115,7 +115,7 @@ export default function EnergyBalanceCard({
           </div>
         </div>
         <div>
-          <div className="text-[9px] text-text-3 font-mono-ui uppercase tracking-wider">
+          <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
             Gordura
           </div>
           <div
@@ -133,7 +133,7 @@ export default function EnergyBalanceCard({
       {onNavigate && (
         <button
           onClick={onNavigate}
-          className="w-full text-[10px] text-accent hover:text-accent-hover font-mono-ui uppercase tracking-wider font-bold py-2 mt-2 border-t border-white/[0.04]"
+          className="w-full text-[11px] text-accent hover:text-accent-hover font-mono-ui uppercase tracking-wider font-bold py-2 mt-2 border-t border-white/[0.04]"
         >
           Ver detalhes →
         </button>

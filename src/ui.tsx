@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 /* ══════════════════════════════════════════════════════════
    FORCE FIELD — Componentes visuais
@@ -78,6 +78,19 @@ export function Card({
   return (
     <div
       onClick={onClick}
+      // Card clicável também precisa funcionar no teclado e ser anunciado.
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       className={`rounded-2xl p-4 ${variants[variant]} ${glowClass} ${
         interactive || onClick
           ? 'cursor-pointer hover:bg-bg-2 active:scale-[0.99] transition-all'
@@ -106,7 +119,7 @@ export function SectionTitle({
 }) {
   return (
     <div className={`flex items-center justify-between mb-3 px-1 ${className}`}>
-      <h2 className="text-[10px] font-semibold text-text-3 uppercase tracking-[0.15em] font-mono-ui">
+      <h2 className="text-[11px] font-semibold text-text-3 uppercase tracking-[0.15em] font-mono-ui">
         {children}
       </h2>
       {action}
@@ -265,7 +278,7 @@ export function Chip({
   size?: 'sm' | 'md';
 }) {
   const sizes = {
-    sm: 'px-2.5 py-1 text-[10px]',
+    sm: 'px-2.5 py-1 text-[11px]',
     md: 'px-3.5 py-1.5 text-xs',
   };
 
@@ -313,7 +326,7 @@ export function Badge({
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono-ui uppercase tracking-wider ${variants[variant]}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold font-mono-ui uppercase tracking-wider ${variants[variant]}`}
     >
       {children}
     </span>
@@ -351,7 +364,7 @@ export function StatCard({
       >
         {value}
       </div>
-      <div className="text-[9px] text-text-3 mt-1 uppercase tracking-[0.15em] font-mono-ui">
+      <div className="text-[11px] text-text-3 mt-1 uppercase tracking-[0.15em] font-mono-ui">
         {label}
       </div>
     </div>
@@ -369,8 +382,26 @@ export function Modal({
   onClose: () => void;
   title?: string;
 }) {
+  // Esc fecha e o fundo não rola atrás do modal.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [onClose]);
+
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
       className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center animate-fade-in"
       onClick={onClose}
     >
@@ -385,7 +416,8 @@ export function Modal({
             </h2>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] active:scale-95 transition-all flex items-center justify-center text-text-2"
+              aria-label="Fechar"
+              className="w-10 h-10 -mr-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] active:scale-95 transition-all flex items-center justify-center text-text-2"
             >
               ✕
             </button>
@@ -425,7 +457,7 @@ export function AppShell({
               {title}
             </h1>
             {subtitle && (
-              <p className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] truncate mt-0.5">
+              <p className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] truncate mt-0.5">
                 {subtitle}
               </p>
             )}
@@ -690,7 +722,7 @@ export function BottomNav({
                 <NavIcon name={tab.icon} active={active} />
               </div>
               <span
-                className={`text-[8px] font-mono-ui uppercase tracking-[0.08em] transition-colors duration-200 truncate max-w-full px-1 ${
+                className={`text-[10px] font-mono-ui uppercase tracking-[0.01em] transition-colors duration-200 truncate max-w-full px-0.5 ${
                   active ? 'text-accent font-bold' : 'text-text-3'
                 }`}
               >

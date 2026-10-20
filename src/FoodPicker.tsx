@@ -83,7 +83,7 @@ export default function FoodPicker({ onAdd, onClose, mealType }: Props) {
               {selectedFood.name}
             </div>
             {selectedFood.brand && (
-              <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider mt-0.5">
+              <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider mt-0.5">
                 {selectedFood.brand}
               </div>
             )}
@@ -91,7 +91,7 @@ export default function FoodPicker({ onAdd, onClose, mealType }: Props) {
 
           {/* Quantidade */}
           <div>
-            <label className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold">
+            <label className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold">
               Quantidade
             </label>
             <div className="flex gap-2 mt-2">
@@ -144,7 +144,7 @@ export default function FoodPicker({ onAdd, onClose, mealType }: Props) {
 
           {/* Macros calculados */}
           <div className="bg-bg-2 border border-white/[0.04] rounded-2xl p-4 space-y-3">
-            <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold">
+            <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold">
               Valores nutricionais
             </div>
 
@@ -163,7 +163,7 @@ export default function FoodPicker({ onAdd, onClose, mealType }: Props) {
             </div>
 
             {macros.fiber > 0 && (
-              <div className="text-[10px] text-text-3 font-mono-ui text-center pt-2 border-t border-white/[0.04]">
+              <div className="text-[11px] text-text-3 font-mono-ui text-center pt-2 border-t border-white/[0.04]">
                 Fibra: {macros.fiber}g
               </div>
             )}
@@ -244,7 +244,7 @@ export default function FoodPicker({ onAdd, onClose, mealType }: Props) {
                   <div className="text-sm font-medium text-text-0 truncate">
                     {food.name}
                   </div>
-                  <div className="text-[10px] text-text-3 font-mono-ui mt-0.5">
+                  <div className="text-[11px] text-text-3 font-mono-ui mt-0.5">
                     {food.category}
                     {food.commonUnit === 'unidade' &&
                       ` · ${food.commonUnitGrams}g un`}
@@ -254,14 +254,14 @@ export default function FoodPicker({ onAdd, onClose, mealType }: Props) {
                   <div className="text-xs font-bold font-mono-ui text-accent">
                     {food.kcalPer100} kcal
                   </div>
-                  <div className="text-[9px] text-text-3 font-mono-ui">
+                  <div className="text-[11px] text-text-3 font-mono-ui">
                     /100g
                   </div>
                 </div>
               </div>
 
               {/* Macros mini */}
-              <div className="flex gap-3 mt-1.5 text-[10px] font-mono-ui">
+              <div className="flex gap-3 mt-1.5 text-[11px] font-mono-ui">
                 <span className="text-accent">P {food.proteinPer100}g</span>
                 <span className="text-info">C {food.carbsPer100}g</span>
                 <span className="text-sci">G {food.fatPer100}g</span>
@@ -288,7 +288,7 @@ function MacroPill({
       <div className={`text-sm font-bold font-mono-ui ${color}`}>
         {Math.round(value * 10) / 10}g
       </div>
-      <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mt-0.5">
+      <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mt-0.5">
         {label}
       </div>
     </div>

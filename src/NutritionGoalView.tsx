@@ -67,7 +67,7 @@ export default function NutritionGoalView({ onBack }: Props) {
       {/* Objetivo */}
       <StaggerItem delay={0}>
         <Card className="mb-4">
-          <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
+          <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
             🎯 Objetivo
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -95,7 +95,7 @@ export default function NutritionGoalView({ onBack }: Props) {
                 >
                   {opt.label}
                 </div>
-                <div className="text-[9px] text-text-3 font-mono-ui mt-0.5">
+                <div className="text-[11px] text-text-3 font-mono-ui mt-0.5">
                   {opt.sub}
                 </div>
               </button>
@@ -107,7 +107,7 @@ export default function NutritionGoalView({ onBack }: Props) {
       {/* Nível de atividade */}
       <StaggerItem delay={0.05}>
         <Card className="mb-4">
-          <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
+          <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
             🏃 Nível de Atividade
           </div>
           <div className="space-y-1.5">
@@ -137,7 +137,7 @@ export default function NutritionGoalView({ onBack }: Props) {
                   >
                     {opt.label}
                   </div>
-                  <div className="text-[10px] text-text-3 font-mono-ui mt-0.5">
+                  <div className="text-[11px] text-text-3 font-mono-ui mt-0.5">
                     {opt.sub}
                   </div>
                 </div>
@@ -155,7 +155,7 @@ export default function NutritionGoalView({ onBack }: Props) {
         <StaggerItem delay={0.1}>
           <Card variant="accent" glow className="mb-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-[10px] text-accent font-mono-ui uppercase tracking-[0.15em] font-bold">
+              <div className="text-[11px] text-accent font-mono-ui uppercase tracking-[0.15em] font-bold">
                 ✦ Metas Calculadas
               </div>
               <Badge variant="accent">
@@ -171,7 +171,7 @@ export default function NutritionGoalView({ onBack }: Props) {
               <div className="text-4xl font-bold font-mono-ui text-accent">
                 {calculated.kcal}
               </div>
-              <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider mt-1">
+              <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider mt-1">
                 kcal / dia
               </div>
             </div>
@@ -182,7 +182,7 @@ export default function NutritionGoalView({ onBack }: Props) {
               <MacroBox label="Gordura" value={calculated.fat} color="sci" />
             </div>
 
-            <div className="text-[10px] text-text-3 font-mono-ui text-center mt-3 pt-2 border-t border-white/[0.04]">
+            <div className="text-[11px] text-text-3 font-mono-ui text-center mt-3 pt-2 border-t border-white/[0.04]">
               Fibra alvo: {calculated.fiber}g
             </div>
           </Card>
@@ -192,10 +192,10 @@ export default function NutritionGoalView({ onBack }: Props) {
       {/* Info científica */}
       <StaggerItem delay={0.15}>
         <Card variant="glass" className="mb-4">
-          <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-2">
+          <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-2">
             📚 Base científica
           </div>
-          <div className="text-[10px] text-text-3 space-y-1 font-mono-ui">
+          <div className="text-[11px] text-text-3 space-y-1 font-mono-ui">
             <div>• TMB: Mifflin-St Jeor (1990)</div>
             <div>• Proteína: Morton et al. (2018)</div>
             <div>• Gordura: Helms et al. (2014)</div>
@@ -235,7 +235,7 @@ function MacroBox({
       <div className={`text-xl font-bold font-mono-ui ${textColor}`}>
         {value}g
       </div>
-      <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mt-0.5">
+      <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mt-0.5">
         {label}
       </div>
     </div>

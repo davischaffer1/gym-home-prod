@@ -66,13 +66,13 @@ export default function EnergyBalanceView({ onBack }: Props) {
           className="mb-4"
         >
           <div className="text-center mb-4">
-            <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-2">
+            <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-2">
               🔥 Balanço de Hoje
             </div>
             <div className={`text-5xl font-bold font-mono-ui ${balanceColor}`}>
               {formatBalance(balance.balance)}
             </div>
-            <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider mt-2">
+            <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider mt-2">
               {balance.balance < 0
                 ? `Déficit → ~${formatFatGrams(balance.fatLossGrams)} de gordura`
                 : balance.balance > 0
@@ -101,7 +101,7 @@ export default function EnergyBalanceView({ onBack }: Props) {
           </div>
 
           {/* Meta */}
-          <div className="text-center text-[10px] text-text-3 font-mono-ui uppercase tracking-wider">
+          <div className="text-center text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
             Meta:{' '}
             <strong className="text-text-1">
               {targetBalance > 0 ? '+' : ''}
@@ -115,7 +115,7 @@ export default function EnergyBalanceView({ onBack }: Props) {
       {/* Breakdown detalhado */}
       <StaggerItem delay={0.05}>
         <Card className="mb-4">
-          <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
+          <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
             📊 Cálculo Detalhado
           </div>
 
@@ -194,7 +194,7 @@ export default function EnergyBalanceView({ onBack }: Props) {
               <span className="text-lg">💤</span>
               <div>
                 <div className="text-text-2 font-bold">Dia de descanso</div>
-                <div className="text-[10px] mt-0.5">
+                <div className="text-[11px] mt-0.5">
                   Sem treino hoje. Balanço considera apenas TDEE base.
                 </div>
               </div>
@@ -207,7 +207,7 @@ export default function EnergyBalanceView({ onBack }: Props) {
       {balance.sessions.length > 0 && (
         <StaggerItem delay={0.1}>
           <Card className="mb-4">
-            <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
+            <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
               🏋️ Treinos de Hoje
             </div>
             <div className="space-y-2">
@@ -235,7 +235,7 @@ export default function EnergyBalanceView({ onBack }: Props) {
                       {intensityLabel(s.intensity)}
                     </Badge>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-[10px] font-mono-ui">
+                  <div className="grid grid-cols-3 gap-2 text-[11px] font-mono-ui">
                     <div>
                       <div className="text-text-3 uppercase tracking-wider">
                         Duração
@@ -262,7 +262,7 @@ export default function EnergyBalanceView({ onBack }: Props) {
                     </div>
                   </div>
                   {s.avgRIR !== null && (
-                    <div className="text-[10px] text-text-3 font-mono-ui mt-1.5">
+                    <div className="text-[11px] text-text-3 font-mono-ui mt-1.5">
                       MET {s.metUsed} · RIR médio {s.avgRIR.toFixed(1)}
                     </div>
                   )}
@@ -278,7 +278,7 @@ export default function EnergyBalanceView({ onBack }: Props) {
         <>
           <StaggerItem delay={0.15}>
             <Card variant="sci" className="mb-4">
-              <div className="text-[10px] text-sci font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
+              <div className="text-[11px] text-sci font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
                 🔮 Projeção (baseada em {cumulative.daysWithData} dias)
               </div>
 
@@ -303,7 +303,7 @@ export default function EnergyBalanceView({ onBack }: Props) {
                 />
               </div>
 
-              <div className="text-[9px] text-text-3 italic font-mono-ui leading-relaxed">
+              <div className="text-[11px] text-text-3 italic font-mono-ui leading-relaxed">
                 ⚠️ Projeção teórica. Perda real pode ser 20-30% menor por
                 adaptação metabólica, retenção de água e aderência.
                 <br />
@@ -348,7 +348,7 @@ export default function EnergyBalanceView({ onBack }: Props) {
       )}
 
       {/* Base científica */}
-      <div className="text-[9px] text-text-3 text-center mt-6 italic font-mono-ui uppercase tracking-[0.15em]">
+      <div className="text-[11px] text-text-3 text-center mt-6 italic font-mono-ui uppercase tracking-[0.15em]">
         Base: Wishnofsky (1958), Hall (2011, 2020), LaForgia (2006)
       </div>
     </SubScreen>
@@ -385,7 +385,7 @@ function BreakdownRow({
             {label}
           </div>
           {sub && (
-            <div className="text-[9px] text-text-3 font-mono-ui mt-0.5 truncate">
+            <div className="text-[11px] text-text-3 font-mono-ui mt-0.5 truncate">
               {sub}
             </div>
           )}
@@ -419,13 +419,13 @@ function ProjectionBox({
 
   return (
     <div className="bg-bg-2 border border-white/[0.04] rounded-xl p-2.5 text-center">
-      <div className="text-[8px] text-text-3 font-mono-ui uppercase tracking-wider mb-1">
+      <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider mb-1">
         {label}
       </div>
       <div className={`text-base font-bold font-mono-ui ${textColor}`}>
         {value}
       </div>
-      <div className="text-[8px] text-text-3 font-mono-ui uppercase tracking-wider mt-0.5">
+      <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider mt-0.5">
         {unit}
       </div>
     </div>

@@ -36,7 +36,7 @@ export default function RecoveryView({ onBack }: Props) {
 
           {suggestion.recommended.length > 0 && (
             <div className="mb-3">
-              <div className="text-[10px] text-text-3 uppercase mb-1">
+              <div className="text-[11px] text-text-3 uppercase mb-1">
                 ✅ Prontos
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -51,7 +51,7 @@ export default function RecoveryView({ onBack }: Props) {
 
           {suggestion.warning.length > 0 && (
             <div className="mb-3">
-              <div className="text-[10px] text-text-3 uppercase mb-1">
+              <div className="text-[11px] text-text-3 uppercase mb-1">
                 ⚠️ Quase recuperados
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -66,7 +66,7 @@ export default function RecoveryView({ onBack }: Props) {
 
           {suggestion.avoid.length > 0 && (
             <div>
-              <div className="text-[10px] text-text-3 uppercase mb-1">
+              <div className="text-[11px] text-text-3 uppercase mb-1">
                 🚫 Evite hoje
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -89,7 +89,7 @@ export default function RecoveryView({ onBack }: Props) {
         ))}
       </div>
 
-      <div className="text-[10px] text-text-3 text-center mt-6 italic">
+      <div className="text-[11px] text-text-3 text-center mt-6 italic">
         Base: Flann (2011), Damas (2016), Cheung (2003)
       </div>
     </SubScreen>
@@ -147,7 +147,7 @@ function RecoveryBar({ data }: { data: MuscleGroupRecovery }) {
       </div>
 
       {/* Info */}
-      <div className="flex justify-between text-[10px] text-text-3">
+      <div className="flex justify-between text-[11px] text-text-3">
         <span>
           {data.hoursSince >= 9999
             ? 'Nunca treinado'
@@ -162,7 +162,7 @@ function RecoveryBar({ data }: { data: MuscleGroupRecovery }) {
 
       {/* Detalhes (48h) */}
       {data.setsLast48h > 0 && (
-        <div className="flex gap-3 mt-2 pt-2 border-t border-white/[0.04] text-[10px]">
+        <div className="flex gap-3 mt-2 pt-2 border-t border-white/[0.04] text-[11px]">
           <span className="text-text-3">
             📊 {data.setsLast48h} séries ·{' '}
             {data.volumeLast48h.toLocaleString('pt-BR')} kg

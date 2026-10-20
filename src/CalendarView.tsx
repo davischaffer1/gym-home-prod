@@ -105,7 +105,7 @@ export default function CalendarView({ onBack }: Props) {
             {monthLabels.map((m, i) => (
               <div
                 key={i}
-                className="text-[9px] text-text-3"
+                className="text-[11px] text-text-3"
                 style={{ width: `${m.cols * 14}px` }}
               >
                 {m.label}
@@ -120,7 +120,7 @@ export default function CalendarView({ onBack }: Props) {
               {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
                 <div
                   key={i}
-                  className="w-3 h-3 text-[8px] text-text-3 flex items-center justify-center"
+                  className="w-3 h-3 text-[10px] text-text-3 flex items-center justify-center"
                 >
                   {i % 2 === 1 ? d : ''}
                 </div>

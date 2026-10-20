@@ -13,11 +13,15 @@
   --color-bg-2: #101828;
   --color-bg-3: #18233a;
 
-  /* ── Texto ── */
+  /* ── Texto ──
+     text-3 era #475569 (~2,6:1 sobre bg-0): ilegível em label pequena.
+     #748599 dá 5,3:1 sobre bg-0 e 4,7:1 sobre bg-2 (AA para texto normal). */
   --color-text-0: #f0f6ff;
   --color-text-1: #cbd5e1;
   --color-text-2: #94a3b8;
-  --color-text-3: #475569;
+  --color-text-3: #748599;
+  /* Só para enfeite/divisória — nunca para texto que precisa ser lido. */
+  --color-text-4: #475569;
 
   /* ── Accent principal (cyan) ── */
   --color-accent: #06b6d4;

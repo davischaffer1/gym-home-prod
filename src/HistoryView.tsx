@@ -13,6 +13,7 @@ import {
   estimate1RMPrecise,
   rpeToRIR,
 } from './trainingScience';
+import { EmptyState, LoadingState } from './StateViews';
 
 interface Props {
   onBack: () => void;
@@ -58,16 +59,14 @@ export default function HistoryView({ onBack }: Props) {
 
   return (
     <SubScreen title="Histórico" onBack={onBack}>
-      {sessions === undefined && (
-        <p className="text-text-3 text-center py-10">Carregando...</p>
-      )}
+      {sessions === undefined && <LoadingState label="Carregando histórico" />}
 
       {sessions?.length === 0 && (
-        <Card variant="glass">
-          <p className="text-text-3 text-sm text-center py-10">
-            Nenhuma sessão finalizada ainda
-          </p>
-        </Card>
+        <EmptyState
+          icon="📜"
+          title="Nenhum treino concluído"
+          description="Quando você encerrar uma sessão, ela aparece aqui com séries, volume e 1RM estimado."
+        />
       )}
 
       <div className="space-y-2">
@@ -132,9 +131,11 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
     return acc;
   }, {});
 
-  // Métricas gerais
-  const totalVolume = sets.reduce((a, s) => a + s.reps * s.weight, 0);
-  const totalReps = sets.reduce((a, s) => a + s.reps, 0);
+  // Métricas gerais — aquecimento não conta como volume (mesma regra da
+  // tela de Evolução, que antes mostrava um número diferente para a
+  // mesma sessão).
+  const workingSets = sets.filter((s) => s.type !== 'warmup');
+  const totalVolume = workingSets.reduce((a, s) => a + s.reps * s.weight, 0);
   const uniqueExercises = Object.keys(grouped).length;
 
   return (
@@ -142,7 +143,7 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
       {/* Stats rápidas */}
       <div className="grid grid-cols-3 gap-2">
         <MiniStat value={String(uniqueExercises)} label="Exercícios" />
-        <MiniStat value={String(sets.length)} label="Séries" />
+        <MiniStat value={String(workingSets.length)} label="Séries" />
         <MiniStat
           value={`${Math.round(totalVolume).toLocaleString('pt-BR')}`}
           label="Volume (kg)"
@@ -152,7 +153,7 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
       {/* Notas da sessão */}
       {session?.notes && (
         <div className="bg-bg-2 border border-white/[0.06] rounded-xl p-3">
-          <div className="text-[10px] text-text-3 uppercase tracking-wider font-semibold mb-1">
+          <div className="text-[11px] text-text-3 uppercase tracking-wider font-semibold mb-1">
             📝 Notas
           </div>
           <p className="text-xs italic text-text-1">{session.notes}</p>
@@ -169,13 +170,12 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
 
         {Object.entries(grouped).map(([exId, list]) => {
           const ex = exercises?.find((e) => e.id === Number(exId));
-          const exVolume = list.reduce(
-            (a, s) => a + s.reps * s.weight,
-            0
-          );
-          const bestSet = getBestSetBy1RM(list);
+          const working = list.filter((s) => s.type !== 'warmup');
+          const exVolume = working.reduce((a, s) => a + s.reps * s.weight, 0);
+          const bestSet = getBestSetBy1RM(working);
           const best1RM = bestSet?.estimated1RM ?? 0;
-          const maxWeight = Math.max(...list.map((s) => s.weight));
+          const maxWeight =
+            working.length > 0 ? Math.max(...working.map((s) => s.weight)) : 0;
 
           return (
             <div
@@ -189,7 +189,7 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
                     <div className="font-semibold text-sm text-accent truncate">
                       {ex?.name ?? 'Exercício removido'}
                     </div>
-                    <div className="text-[10px] text-text-3 mt-0.5">
+                    <div className="text-[11px] text-text-3 mt-0.5">
                       {list.length} série{list.length > 1 ? 's' : ''} ·{' '}
                       {Math.round(exVolume).toLocaleString('pt-BR')} kg de
                       volume
@@ -197,7 +197,7 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
                   </div>
                   {best1RM > 0 && (
                     <div className="text-right flex-shrink-0">
-                      <div className="text-[10px] text-text-3 uppercase tracking-wider">
+                      <div className="text-[11px] text-text-3 uppercase tracking-wider">
                         1RM est.
                       </div>
                       <div className="text-sm font-bold text-sci font-mono-ui">
@@ -221,22 +221,22 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
                       className="flex items-center justify-between px-3 py-2 text-xs"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-5 h-5 rounded-md bg-white/[0.05] text-text-2 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                        <span className="w-5 h-5 rounded-md bg-white/[0.05] text-text-2 text-[11px] font-bold flex items-center justify-center flex-shrink-0">
                           {s.setNumber}
                         </span>
                         {isPRSet && list.length > 1 && (
-                          <span className="text-[10px]">🏆</span>
+                          <span className="text-[11px]">🏆</span>
                         )}
                         <span className="text-text-1">
                           {s.reps} reps × {s.weight} kg
                         </span>
                         {s.type && s.type !== 'normal' && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.05] text-text-3">
+                          <span className="text-[11px] px-1.5 py-0.5 rounded bg-white/[0.05] text-text-3">
                             {s.type}
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-text-3 flex-shrink-0">
+                      <div className="flex items-center gap-2 text-[11px] text-text-3 flex-shrink-0">
                         {rir !== undefined && <span>RIR {rir}</span>}
                         {s.tutSeconds && <span>{s.tutSeconds}s</span>}
                       </div>
@@ -256,7 +256,7 @@ function MiniStat({ value, label }: { value: string; label: string }) {
   return (
     <div className="bg-bg-2 border border-white/[0.06] rounded-xl p-2.5 text-center">
       <div className="text-base font-bold text-text-0">{value}</div>
-      <div className="text-[9px] text-text-3 uppercase tracking-wider mt-0.5">
+      <div className="text-[11px] text-text-3 uppercase tracking-wider mt-0.5">
         {label}
       </div>
     </div>

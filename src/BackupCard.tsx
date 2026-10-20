@@ -119,7 +119,7 @@ export default function BackupCard() {
       )}
 
       {storage && (
-        <div className="text-[10px] font-mono-ui uppercase tracking-wider text-text-3">
+        <div className="text-[11px] font-mono-ui uppercase tracking-wider text-text-3">
           {storage.usageMb} MB usados · limite ~{storage.quotaMb} MB
         </div>
       )}
@@ -190,7 +190,7 @@ export default function BackupCard() {
         </p>
       )}
 
-      <p className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider">
+      <p className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
         Formato v{BACKUP_VERSION} · JSON
       </p>
     </Card>

@@ -298,7 +298,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
             </button>
             <button
               onClick={finish}
-              className="h-9 px-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-[10px] font-bold font-mono-ui uppercase tracking-wider active:scale-95 transition-all hover:bg-danger/20"
+              className="h-9 px-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-[11px] font-bold font-mono-ui uppercase tracking-wider active:scale-95 transition-all hover:bg-danger/20"
             >
               Encerrar
             </button>
@@ -348,7 +348,7 @@ export default function SessionView({ workoutId, onFinish, onRepeat }: Props) {
               <div className="text-sm font-bold text-text-0 truncate font-display">
                 {currentEx?.order}. {currentEx?.name}
               </div>
-              <div className="text-[10px] text-text-3 mt-0.5 font-mono-ui uppercase tracking-wider">
+              <div className="text-[11px] text-text-3 mt-0.5 font-mono-ui uppercase tracking-wider">
                 Exercício {currentExerciseIndex + 1} / {totalEx}
               </div>
             </div>
@@ -457,7 +457,7 @@ function ElapsedTime({
       <span className="w-2 h-2 rounded-full bg-accent animate-pulse-soft" />
       {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
       {pausedAt && (
-        <span className="text-warn text-[10px] uppercase tracking-wider">
+        <span className="text-warn text-[11px] uppercase tracking-wider">
           ⏸ pausado
         </span>
       )}
@@ -950,7 +950,7 @@ function ExerciseCard({
               {recoveryInfo.group} ainda não recuperado (
               {recoveryInfo.score}%)
             </div>
-            <div className="text-[10px] opacity-80 mt-0.5 font-mono-ui uppercase tracking-wider">
+            <div className="text-[11px] opacity-80 mt-0.5 font-mono-ui uppercase tracking-wider">
               Pronto em {formatHoursRemaining(recoveryInfo.hoursRemaining)}
             </div>
           </div>
@@ -1004,7 +1004,7 @@ function ExerciseCard({
               <div className="font-bold font-display mb-0.5">
                 🧠 {rirSuggestion.direction === 'up' ? 'Suba' : 'Reduza'}
               </div>
-              <div className="text-[10px] opacity-80 font-mono-ui uppercase tracking-wider">
+              <div className="text-[11px] opacity-80 font-mono-ui uppercase tracking-wider">
                 Nova: {rirSuggestion.suggestedWeight} kg
               </div>
             </div>
@@ -1012,7 +1012,7 @@ function ExerciseCard({
               onClick={() =>
                 setWeight(String(rirSuggestion.suggestedWeight))
               }
-              className="bg-accent text-black px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono-ui uppercase tracking-wider"
+              className="bg-accent text-black px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono-ui uppercase tracking-wider"
             >
               Usar
             </PunchButton>
@@ -1026,7 +1026,7 @@ function ExerciseCard({
           </span>
           <PunchButton
             onClick={() => setWeight(String(analysis.suggestedWeight))}
-            className="bg-accent text-black px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono-ui uppercase tracking-wider"
+            className="bg-accent text-black px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono-ui uppercase tracking-wider"
           >
             Usar
           </PunchButton>
@@ -1051,7 +1051,7 @@ function ExerciseCard({
                   key={s.id}
                   className="bg-accent-dim border border-accent/30 rounded-xl p-2.5 space-y-2"
                 >
-                  <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider">
+                  <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
                     Editando série {s.setNumber}
                   </div>
                   <div className="flex gap-1.5">
@@ -1133,7 +1133,7 @@ function ExerciseCard({
                   </span>
                   {t !== 'normal' && (
                     <span
-                      className={`text-[9px] px-1.5 py-0.5 rounded font-bold font-mono-ui uppercase tracking-wider ${typeBadgeStyle(
+                      className={`text-[11px] px-1.5 py-0.5 rounded font-bold font-mono-ui uppercase tracking-wider ${typeBadgeStyle(
                         t
                       )}`}
                     >
@@ -1141,13 +1141,13 @@ function ExerciseCard({
                     </span>
                   )}
                   {s.rpe !== undefined && (
-                    <span className="text-[10px] text-text-3 font-mono-ui">
+                    <span className="text-[11px] text-text-3 font-mono-ui">
                       RPE {s.rpe}
                     </span>
                   )}
                   {fiber && (
                     <span
-                      className="text-[10px] text-sci font-mono-ui"
+                      className="text-[11px] text-sci font-mono-ui"
                       title={`${fiber.intensityPct}% 1RM`}
                     >
                       {fiber.typeII ? '⚡II' : 'I'}
@@ -1190,7 +1190,7 @@ function ExerciseCard({
             <div className="text-sm font-bold text-accent font-display">
               {nextRepGoal.message}
             </div>
-            <div className="text-[10px] text-text-3 mt-0.5 font-mono-ui uppercase tracking-wider">
+            <div className="text-[11px] text-text-3 mt-0.5 font-mono-ui uppercase tracking-wider">
               {nextRepGoal.sub}
             </div>
           </div>
@@ -1235,7 +1235,7 @@ function ExerciseCard({
         <div className="relative">
           <button
             onClick={() => setShowTypeMenu((v) => !v)}
-            className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-bold font-mono-ui uppercase tracking-wider active:scale-95 ${typeBadgeStyle(
+            className={`text-[11px] px-2.5 py-1.5 rounded-lg border font-bold font-mono-ui uppercase tracking-wider active:scale-95 ${typeBadgeStyle(
               type
             )}`}
           >
@@ -1273,7 +1273,7 @@ function ExerciseCard({
 
         <button
           onClick={toggleTut}
-          className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-bold font-mono-ui uppercase tracking-wider active:scale-95 ${
+          className={`text-[11px] px-2.5 py-1.5 rounded-lg border font-bold font-mono-ui uppercase tracking-wider active:scale-95 ${
             tutStart !== null
               ? 'bg-danger/20 border-danger/40 text-danger'
               : 'bg-white/[0.04] border-white/[0.06] text-text-2'
@@ -1283,7 +1283,7 @@ function ExerciseCard({
         </button>
 
         <div className="flex items-center gap-1 bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5">
-          <span className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider">
+          <span className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
             RPE
           </span>
           <select
@@ -1291,7 +1291,7 @@ function ExerciseCard({
             onChange={(e) =>
               setRpe(e.target.value ? parseInt(e.target.value) : undefined)
             }
-            className="bg-transparent text-[10px] outline-none text-text-1 font-mono-ui"
+            className="bg-transparent text-[11px] outline-none text-text-1 font-mono-ui"
           >
             <option value="">–</option>
             {[6, 7, 8, 9, 10].map((v) => (
@@ -1301,7 +1301,7 @@ function ExerciseCard({
             ))}
           </select>
           {rpe !== undefined && (
-            <span className="text-[10px] text-text-3 font-mono-ui">
+            <span className="text-[11px] text-text-3 font-mono-ui">
               RIR {10 - rpe}
             </span>
           )}
@@ -1309,7 +1309,7 @@ function ExerciseCard({
 
         <button
           onClick={() => setShowNote((v) => !v)}
-          className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-bold font-mono-ui uppercase tracking-wider active:scale-95 ${
+          className={`text-[11px] px-2.5 py-1.5 rounded-lg border font-bold font-mono-ui uppercase tracking-wider active:scale-95 ${
             note
               ? 'bg-accent-dim border-accent/30 text-accent'
               : 'bg-white/[0.04] border-white/[0.06] text-text-2'
@@ -1454,7 +1454,7 @@ function SessionSummary({
         </div>
 
         <div className="space-y-3">
-          <h2 className="text-[10px] font-bold text-text-3 uppercase tracking-[0.15em] px-1 font-mono-ui">
+          <h2 className="text-[11px] font-bold text-text-3 uppercase tracking-[0.15em] px-1 font-mono-ui">
             Detalhes
           </h2>
           {groupByExercise(sets, exercises).map((g) => (
@@ -1482,7 +1482,7 @@ function SessionSummary({
 
         {session.notes && (
           <div className="bg-bg-1 border border-white/[0.06] rounded-2xl p-4">
-            <div className="text-[10px] text-text-3 uppercase tracking-[0.15em] font-bold mb-2 font-mono-ui">
+            <div className="text-[11px] text-text-3 uppercase tracking-[0.15em] font-bold mb-2 font-mono-ui">
               📝 Notas
             </div>
             <p className="text-sm italic text-text-1">{session.notes}</p>
@@ -1535,7 +1535,7 @@ function SummaryCard({
       >
         {value}
       </div>
-      <div className="text-[9px] text-text-3 mt-0.5 uppercase tracking-[0.15em] font-mono-ui">
+      <div className="text-[11px] text-text-3 mt-0.5 uppercase tracking-[0.15em] font-mono-ui">
         {label}
       </div>
     </div>

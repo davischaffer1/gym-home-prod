@@ -78,7 +78,7 @@ export default function RecoveryRing({
           {Math.round(animated)}
         </div>
         {label && (
-          <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mt-1">
+          <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mt-1">
             {label}
           </div>
         )}

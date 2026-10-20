@@ -86,13 +86,13 @@ export default function NutritionAnalysisView({ onBack }: Props) {
       <StaggerItem delay={0}>
         <Card variant="accent" glow className="mb-4">
           <div className="text-center py-3">
-            <div className="text-[10px] text-accent font-mono-ui uppercase tracking-[0.15em] font-bold mb-2">
+            <div className="text-[11px] text-accent font-mono-ui uppercase tracking-[0.15em] font-bold mb-2">
               ✦ Aderência às Metas
             </div>
             <div className={`text-5xl font-bold font-mono-ui ${adherenceColor}`}>
               {adherence.adherence}%
             </div>
-            <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider mt-2">
+            <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider mt-2">
               {adherence.daysLogged} de {adherence.daysTotal} dias registrados
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function NutritionAnalysisView({ onBack }: Props) {
       {comparison && comparison.thisWeek.days > 0 && comparison.lastWeek.days > 0 && (
         <StaggerItem delay={0.03}>
           <Card className="mb-4">
-            <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
+            <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
               📊 Esta semana vs. anterior
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -165,7 +165,7 @@ export default function NutritionAnalysisView({ onBack }: Props) {
               v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
             }
           />
-          <div className="text-[9px] text-text-3 font-mono-ui text-center mt-2 uppercase tracking-wider">
+          <div className="text-[11px] text-text-3 font-mono-ui text-center mt-2 uppercase tracking-wider">
             Meta: {goal.targetKcal} kcal/dia
           </div>
         </Card>
@@ -180,7 +180,7 @@ export default function NutritionAnalysisView({ onBack }: Props) {
             color="#60a5fa"
             height={180}
           />
-          <div className="text-[9px] text-text-3 font-mono-ui text-center mt-2 uppercase tracking-wider">
+          <div className="text-[11px] text-text-3 font-mono-ui text-center mt-2 uppercase tracking-wider">
             Meta: {goal.targetProtein}g/dia
           </div>
         </Card>
@@ -190,7 +190,7 @@ export default function NutritionAnalysisView({ onBack }: Props) {
       {correlation && (
         <StaggerItem delay={0.2}>
           <Card variant="sci" className="mb-4">
-            <div className="text-[10px] text-sci font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
+            <div className="text-[11px] text-sci font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
               ⚡ Correlação com Treino
             </div>
 
@@ -209,7 +209,7 @@ export default function NutritionAnalysisView({ onBack }: Props) {
               correlation={correlation.proteinCorrelation}
             />
 
-            <div className="text-[9px] text-text-3 mt-3 pt-3 border-t border-white/[0.04] italic font-mono-ui">
+            <div className="text-[11px] text-text-3 mt-3 pt-3 border-t border-white/[0.04] italic font-mono-ui">
               Base: Aragon & Schoenfeld (2020), Kerksick (2017)
             </div>
           </Card>
@@ -219,7 +219,7 @@ export default function NutritionAnalysisView({ onBack }: Props) {
       {/* Consistência semanal */}
       <StaggerItem delay={0.25}>
         <Card className="mb-4">
-          <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
+          <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
             📊 Consistência Semanal
           </div>
           <div className="space-y-2">
@@ -244,7 +244,7 @@ export default function NutritionAnalysisView({ onBack }: Props) {
                     {weekIdx === 0 ? 'Atual' : `S-${weekIdx}`}
                   </span>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-text-3 font-mono-ui">
+                    <span className="text-[11px] text-text-3 font-mono-ui">
                       {weekLogged}/7
                     </span>
                     <div className="w-24 h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
@@ -272,7 +272,7 @@ export default function NutritionAnalysisView({ onBack }: Props) {
         </Card>
       </StaggerItem>
 
-      <div className="text-[9px] text-text-3 text-center mt-6 italic font-mono-ui uppercase tracking-[0.15em]">
+      <div className="text-[11px] text-text-3 text-center mt-6 italic font-mono-ui uppercase tracking-[0.15em]">
         Force Field · Nutrição Científica
       </div>
     </SubScreen>
@@ -314,7 +314,7 @@ function StatBox({
       <div className={`text-xl font-bold font-mono-ui ${textColor}`}>
         {value}
       </div>
-      <div className="text-[9px] text-text-3 uppercase tracking-[0.15em] font-mono-ui mt-1">
+      <div className="text-[11px] text-text-3 uppercase tracking-[0.15em] font-mono-ui mt-1">
         {label}
       </div>
       <div className="w-full h-1 bg-white/[0.05] rounded-full overflow-hidden mt-2">
@@ -355,7 +355,7 @@ function CorrelationBar({
     <div className="mb-3">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs text-text-1 font-mono-ui">{label}</span>
-        <span className={`text-[10px] font-mono-ui font-bold ${strength.color}`}>
+        <span className={`text-[11px] font-mono-ui font-bold ${strength.color}`}>
           {correlation > 0 ? '+' : ''}
           {correlation} · {strength.label}
         </span>
@@ -390,7 +390,7 @@ function CompareRow({
 
   return (
     <div className="bg-bg-2 border border-white/[0.04] rounded-xl p-2.5">
-      <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
+      <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
         {label}
       </div>
       <div className="flex items-baseline justify-between">
@@ -399,7 +399,7 @@ function CompareRow({
           {unit}
         </span>
         <span
-          className={`text-[10px] font-mono-ui font-bold ${
+          className={`text-[11px] font-mono-ui font-bold ${
             isUp ? 'text-accent' : isDown ? 'text-danger' : 'text-text-3'
           }`}
         >

@@ -292,7 +292,7 @@ export default function DashboardView({ onBack }: Props) {
                 <div className="text-xs text-text-2 leading-relaxed">
                   {deloadInfo.reason}. Reduza o volume em ~40-50%.
                 </div>
-                <div className="text-[9px] text-text-3 mt-2 font-mono-ui uppercase tracking-wider">
+                <div className="text-[11px] text-text-3 mt-2 font-mono-ui uppercase tracking-wider">
                   Bell 2020 · Issurin 2010
                 </div>
               </div>
@@ -401,7 +401,7 @@ export default function DashboardView({ onBack }: Props) {
                 <div className="text-xs font-bold text-text-0 font-display">
                   🎯 Séries Efetivas
                 </div>
-                <div className="text-[9px] text-text-3 italic mt-0.5 font-mono-ui">
+                <div className="text-[11px] text-text-3 italic mt-0.5 font-mono-ui">
                   Refalo (2021, 2023) · Schoenfeld (2021)
                 </div>
               </div>
@@ -425,7 +425,7 @@ export default function DashboardView({ onBack }: Props) {
                 <div className="text-xs font-bold text-text-0 font-display">
                   🧪 Ativação de Fibras
                 </div>
-                <div className="text-[9px] text-text-3 italic mt-0.5 font-mono-ui">
+                <div className="text-[11px] text-text-3 italic mt-0.5 font-mono-ui">
                   Henneman (1965) · Grgic (2020)
                 </div>
               </div>
@@ -465,7 +465,7 @@ export default function DashboardView({ onBack }: Props) {
                   <div className="text-2xl font-bold text-sci font-mono-ui">
                     {bestForecast.forecast.target} kg
                   </div>
-                  <div className="text-[10px] text-text-3 font-mono-ui">
+                  <div className="text-[11px] text-text-3 font-mono-ui">
                     +{bestForecast.forecast.gap} kg
                   </div>
                 </div>
@@ -473,7 +473,7 @@ export default function DashboardView({ onBack }: Props) {
                   <div className="text-lg font-bold font-mono-ui text-text-0">
                     ~{bestForecast.forecast.weeksToTarget} sem
                   </div>
-                  <div className="text-[10px] text-text-3 font-mono-ui">
+                  <div className="text-[11px] text-text-3 font-mono-ui">
                     {bestForecast.forecast.estimatedDate
                       ? new Date(
                           bestForecast.forecast.estimatedDate
@@ -486,7 +486,7 @@ export default function DashboardView({ onBack }: Props) {
                 </div>
               </div>
 
-              <div className="text-[9px] text-text-3 mt-3 pt-2 border-t border-white/[0.04] italic font-mono-ui">
+              <div className="text-[11px] text-text-3 mt-3 pt-2 border-t border-white/[0.04] italic font-mono-ui">
                 {bestForecast.forecast.note}
               </div>
             </Card>
@@ -526,7 +526,7 @@ export default function DashboardView({ onBack }: Props) {
         </Card>
       </StaggerItem>
 
-      <div className="text-[9px] text-text-3 text-center mt-6 italic font-mono-ui uppercase tracking-[0.15em]">
+      <div className="text-[11px] text-text-3 text-center mt-6 italic font-mono-ui uppercase tracking-[0.15em]">
         Force Field · Análise Científica
       </div>
     </SubScreen>
@@ -568,7 +568,7 @@ function ReadinessCard({
           <div className="text-xs font-bold text-text-0 font-display">
             💤 Prontidão
           </div>
-          <div className="text-[9px] text-text-3 italic font-mono-ui mt-0.5">
+          <div className="text-[11px] text-text-3 italic font-mono-ui mt-0.5">
             Saw (2016) · Bourdon (2017)
           </div>
         </div>
@@ -576,7 +576,7 @@ function ReadinessCard({
           <div className={`text-3xl font-bold font-mono-ui ${color}`}>
             {data.score}
           </div>
-          <div className="text-[9px] text-text-3 font-mono-ui">/100</div>
+          <div className="text-[11px] text-text-3 font-mono-ui">/100</div>
         </div>
       </div>
 
@@ -586,7 +586,7 @@ function ReadinessCard({
 
       <div className="space-y-1.5">
         {data.factors.map((f, i) => (
-          <div key={i} className="flex items-center gap-2 text-[10px]">
+          <div key={i} className="flex items-center gap-2 text-[11px]">
             <span className="w-20 text-text-3 font-mono-ui uppercase tracking-wider">
               {f.name}
             </span>
@@ -633,7 +633,7 @@ function ACWRCard({
           <div className="text-xs font-bold text-text-0 font-display">
             📉 Carga (ACWR)
           </div>
-          <div className="text-[9px] text-text-3 italic font-mono-ui mt-0.5">
+          <div className="text-[11px] text-text-3 italic font-mono-ui mt-0.5">
             Gabbett (2016)
           </div>
         </div>
@@ -643,7 +643,7 @@ function ACWRCard({
         <span className={`text-3xl font-bold font-mono-ui ${color}`}>
           {data.ratio}
         </span>
-        <span className="text-[10px] text-text-3 font-mono-ui">
+        <span className="text-[11px] text-text-3 font-mono-ui">
           {data.acute} / {data.chronic}
         </span>
       </div>
@@ -684,14 +684,14 @@ function StrainCard({
         <div className="text-xs font-bold text-text-0 font-display">
           ⚡ Strain & Monotonia
         </div>
-        <div className="text-[9px] text-text-3 italic font-mono-ui mt-0.5">
+        <div className="text-[11px] text-text-3 italic font-mono-ui mt-0.5">
           Foster (1998, 2001)
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-bg-2 rounded-xl p-2.5 text-center">
-          <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
+          <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
             Carga
           </div>
           <div className="text-base font-bold font-mono-ui text-text-0">
@@ -699,7 +699,7 @@ function StrainCard({
           </div>
         </div>
         <div className="bg-bg-2 rounded-xl p-2.5 text-center">
-          <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
+          <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
             Monotonia
           </div>
           <div
@@ -711,7 +711,7 @@ function StrainCard({
           </div>
         </div>
         <div className="bg-bg-2 rounded-xl p-2.5 text-center">
-          <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
+          <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
             Strain
           </div>
           <div
@@ -758,7 +758,7 @@ function MiniStat({
       >
         {value}
       </div>
-      <div className="text-[9px] text-text-3 uppercase tracking-[0.15em] font-mono-ui mt-0.5">
+      <div className="text-[11px] text-text-3 uppercase tracking-[0.15em] font-mono-ui mt-0.5">
         {label}
       </div>
     </div>
@@ -796,7 +796,7 @@ function EffectiveSetBar({
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-text-0">{group.group}</span>
           <span
-            className={`text-[9px] font-mono-ui uppercase tracking-wider font-bold ${colorText}`}
+            className={`text-[11px] font-mono-ui uppercase tracking-wider font-bold ${colorText}`}
           >
             {status === 'baixo'
               ? '↓ abaixo'
@@ -865,12 +865,12 @@ function FiberBar({
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-text-0">{group.group}</span>
           <span
-            className={`text-[9px] font-mono-ui uppercase tracking-wider font-bold ${statusColor}`}
+            className={`text-[11px] font-mono-ui uppercase tracking-wider font-bold ${statusColor}`}
           >
             {statusLabel}
           </span>
         </div>
-        <span className="text-[9px] text-text-3 font-mono-ui">
+        <span className="text-[11px] text-text-3 font-mono-ui">
           {group.countTypeII}/{group.countTypeI}
         </span>
       </div>

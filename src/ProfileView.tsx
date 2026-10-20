@@ -176,7 +176,7 @@ export default function ProfileView({ onBack }: Props) {
                   </div>
                 )}
                 {profile?.sex && profile?.age && (
-                  <div className="text-[10px] text-text-3 mt-0.5">
+                  <div className="text-[11px] text-text-3 mt-0.5">
                     {profile.sex === 'M' ? 'Masculino' : 'Feminino'} ·{' '}
                     {profile.age} anos
                   </div>
@@ -209,7 +209,7 @@ export default function ProfileView({ onBack }: Props) {
                   <div className="text-xs text-text-3 uppercase tracking-wider font-semibold">
                     🧬 Índice de Força Relativa
                   </div>
-                  <div className="text-[10px] text-text-3 mt-0.5">
+                  <div className="text-[11px] text-text-3 mt-0.5">
                     Base: Rikli & Jones (1999), ACSM
                   </div>
                 </div>
@@ -217,7 +217,7 @@ export default function ProfileView({ onBack }: Props) {
                   <div className="text-2xl font-bold text-accent">
                     {isr.isr.toFixed(2)}
                   </div>
-                  <div className="text-[10px] text-text-3">× peso</div>
+                  <div className="text-[11px] text-text-3">× peso</div>
                 </div>
               </div>
 
@@ -226,7 +226,7 @@ export default function ProfileView({ onBack }: Props) {
                   {isr.level}
                 </div>
                 {isr.nextLevel && (
-                  <span className="text-[10px] text-text-3">
+                  <span className="text-[11px] text-text-3">
                     · próximo: {isr.nextLevel.toFixed(2)}
                   </span>
                 )}
@@ -239,7 +239,7 @@ export default function ProfileView({ onBack }: Props) {
                 />
               </div>
 
-              <div className="text-[10px] text-text-3 mt-2">
+              <div className="text-[11px] text-text-3 mt-2">
                 Total dos 3 grandes: {isr.total1RM} kg
               </div>
             </Card>
@@ -251,7 +251,7 @@ export default function ProfileView({ onBack }: Props) {
               <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-3">
                 💪 Força relativa
               </div>
-              <div className="text-[10px] text-text-3 mb-3 -mt-2">
+              <div className="text-[11px] text-text-3 mb-3 -mt-2">
                 Base: Strength Level standards
               </div>
 
@@ -264,7 +264,7 @@ export default function ProfileView({ onBack }: Props) {
                         <span className="font-bold text-accent">
                           {p?.percentile}%
                         </span>
-                        <span className="text-text-3 ml-1 text-[10px]">
+                        <span className="text-text-3 ml-1 text-[11px]">
                           · top {100 - (p?.percentile ?? 0)}%
                         </span>
                       </div>
@@ -275,7 +275,7 @@ export default function ProfileView({ onBack }: Props) {
                         style={{ width: `${p?.percentile ?? 0}%` }}
                       />
                     </div>
-                    <div className="text-[10px] text-text-3 mt-0.5">
+                    <div className="text-[11px] text-text-3 mt-0.5">
                       {p?.level} · {p?.ratio}× peso corporal
                     </div>
                   </div>
@@ -453,7 +453,7 @@ function MiniStat({
     <div className="bg-bg-1 border border-white/[0.06] rounded-2xl p-3 text-center">
       <div className="text-xl">{icon}</div>
       <div className="text-base font-bold text-text-0 mt-0.5">{value}</div>
-      <div className="text-[10px] text-text-3 uppercase tracking-wider mt-0.5">
+      <div className="text-[11px] text-text-3 uppercase tracking-wider mt-0.5">
         {label}
       </div>
     </div>
@@ -480,13 +480,13 @@ function DailyTarget({
           <span className="text-lg">{icon}</span>
           <div>
             <div className="text-sm font-medium text-text-0">{title}</div>
-            <div className="text-[9px] text-text-3 italic">{reference}</div>
+            <div className="text-[11px] text-text-3 italic">{reference}</div>
           </div>
         </div>
         <div className="text-right">
           <div className="text-sm font-bold text-accent">{value}</div>
           {subtitle && (
-            <div className="text-[9px] text-text-3">{subtitle}</div>
+            <div className="text-[11px] text-text-3">{subtitle}</div>
           )}
         </div>
       </div>
@@ -510,7 +510,7 @@ function ProfileField({
 
   return (
     <div>
-      <label className="text-[10px] text-text-3 uppercase tracking-wider font-semibold">
+      <label className="text-[11px] text-text-3 uppercase tracking-wider font-semibold">
         {label}
       </label>
       {editing ? (
@@ -615,7 +615,7 @@ function BodyMeasurements() {
           <div className="text-xs text-text-3 uppercase tracking-wider font-semibold">
             📏 Medidas corporais
           </div>
-          <div className="text-[10px] text-text-3 italic mt-0.5">
+          <div className="text-[11px] text-text-3 italic mt-0.5">
             Base: ISAK
           </div>
         </div>
@@ -706,7 +706,7 @@ function BodyMeasurements() {
                   ×
                 </button>
               </div>
-              <div className="text-[10px] text-text-3 flex flex-wrap gap-2">
+              <div className="text-[11px] text-text-3 flex flex-wrap gap-2">
                 {m.weightKg && <span>⚖️ {m.weightKg} kg</span>}
                 {m.bodyFatPct && <span>📊 {m.bodyFatPct}%</span>}
                 {m.waistCm && <span>〰️ Cintura {m.waistCm}cm</span>}
@@ -732,7 +732,7 @@ function MeasureInput({
 }) {
   return (
     <div>
-      <label className="text-[10px] text-text-3">{label}</label>
+      <label className="text-[11px] text-text-3">{label}</label>
       <input
         className="w-full mt-0.5 bg-bg-2 border border-white/[0.04] rounded-xl px-3 py-2 text-sm text-text-0 outline-none focus:border-accent/40"
         inputMode="decimal"
@@ -798,7 +798,7 @@ function SomatotypeCard() {
           <div className="text-xs text-text-3 uppercase tracking-wider font-semibold">
             🧬 Somatotipo
           </div>
-          <div className="text-[10px] text-text-3 italic mt-0.5">
+          <div className="text-[11px] text-text-3 italic mt-0.5">
             Base: Heath-Carter (1990)
           </div>
         </div>
@@ -814,7 +814,7 @@ function SomatotypeCard() {
         <div className="space-y-3 mb-4 animate-fade-in">
           {questions.map((q) => (
             <div key={q.key}>
-              <div className="flex justify-between text-[10px] text-text-3 mb-1">
+              <div className="flex justify-between text-[11px] text-text-3 mb-1">
                 <span>{q.min}</span>
                 <span className="font-medium text-text-1">{q.label}</span>
                 <span>{q.max}</span>
@@ -842,25 +842,25 @@ function SomatotypeCard() {
         <div className="space-y-2">
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-bg-2 rounded-xl p-2.5 text-center">
-              <div className="text-[9px] text-text-3 uppercase">Endo</div>
+              <div className="text-[11px] text-text-3 uppercase">Endo</div>
               <div className="text-lg font-bold text-warn">
                 {lastResult.endomorphy}
               </div>
             </div>
             <div className="bg-bg-2 rounded-xl p-2.5 text-center">
-              <div className="text-[9px] text-text-3 uppercase">Meso</div>
+              <div className="text-[11px] text-text-3 uppercase">Meso</div>
               <div className="text-lg font-bold text-accent">
                 {lastResult.mesomorphy}
               </div>
             </div>
             <div className="bg-bg-2 rounded-xl p-2.5 text-center">
-              <div className="text-[9px] text-text-3 uppercase">Ecto</div>
+              <div className="text-[11px] text-text-3 uppercase">Ecto</div>
               <div className="text-lg font-bold text-info">
                 {lastResult.ectomorphy}
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-text-3 italic">
+          <p className="text-[11px] text-text-3 italic">
             Última avaliação:{' '}
             {new Date(lastResult.date).toLocaleDateString('pt-BR')}
           </p>

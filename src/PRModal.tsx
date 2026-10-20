@@ -58,7 +58,7 @@ export default function PRModal({
             >
               NOVO PR!
             </h2>
-            <p className="text-[10px] text-text-3 mt-1 font-mono-ui uppercase tracking-[0.2em]">
+            <p className="text-[11px] text-text-3 mt-1 font-mono-ui uppercase tracking-[0.2em]">
               Personal Record
             </p>
           </div>
@@ -73,7 +73,7 @@ export default function PRModal({
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3 mb-5">
             <div className="bg-bg-2 border border-white/[0.06] rounded-2xl p-3 text-center">
-              <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
+              <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
                 Carga
               </div>
               <div className="text-2xl font-bold font-mono-ui text-text-0">
@@ -82,7 +82,7 @@ export default function PRModal({
               </div>
             </div>
             <div className="bg-bg-2 border border-white/[0.06] rounded-2xl p-3 text-center">
-              <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
+              <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
                 Reps
               </div>
               <div className="text-2xl font-bold font-mono-ui text-text-0">
@@ -90,7 +90,7 @@ export default function PRModal({
               </div>
             </div>
             <div className="bg-bg-2 border border-white/[0.06] rounded-2xl p-3 text-center col-span-2">
-              <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
+              <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
                 1RM Estimado
               </div>
               <div className="text-2xl font-bold font-mono-ui text-accent">
@@ -103,7 +103,7 @@ export default function PRModal({
           {/* Ganho */}
           {previousPR && gain > 0 && (
             <div className="bg-pr/10 border border-pr/30 rounded-2xl p-3 mb-5 text-center">
-              <div className="text-[10px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
+              <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mb-1">
                 Progresso
               </div>
               <div className="text-lg font-bold font-mono-ui text-pr">

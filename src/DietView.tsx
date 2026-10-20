@@ -192,7 +192,7 @@ export default function DietView({ onBack }: Props) {
           {!isToday && (
             <button
               onClick={() => setSelectedDate(todayKey())}
-              className="text-[9px] text-accent font-mono-ui uppercase tracking-wider mt-0.5"
+              className="text-[11px] text-accent font-mono-ui uppercase tracking-wider mt-0.5"
             >
               Voltar pra hoje
             </button>
@@ -222,7 +222,7 @@ export default function DietView({ onBack }: Props) {
       <StaggerItem delay={0.03}>
         <Card className="mb-4">
           <div className="text-center mb-4">
-            <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-2">
+            <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-2">
               🔥 Calorias
             </div>
             <div className="flex items-baseline justify-center gap-2">
@@ -233,7 +233,7 @@ export default function DietView({ onBack }: Props) {
                 / {goal.targetKcal}
               </span>
             </div>
-            <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider mt-1">
+            <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider mt-1">
               {goal.targetKcal - Math.round(summary?.kcal ?? 0) > 0
                 ? `Faltam ${goal.targetKcal - Math.round(summary?.kcal ?? 0)} kcal`
                 : `${Math.round(summary?.kcal ?? 0) - goal.targetKcal} kcal acima`}
@@ -290,7 +290,7 @@ export default function DietView({ onBack }: Props) {
                 <div className="text-xs font-bold font-display text-text-0">
                   Água
                 </div>
-                <div className="text-[9px] text-text-3 font-mono-ui uppercase tracking-wider">
+                <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
                   Meta: {(waterGoal / 1000).toFixed(1)}L
                 </div>
               </div>
@@ -327,7 +327,7 @@ export default function DietView({ onBack }: Props) {
           {(water ?? 0) > 0 && (
             <button
               onClick={() => resetWater(selectedDate)}
-              className="w-full mt-2 text-[10px] text-text-3 hover:text-danger font-mono-ui uppercase tracking-wider py-1"
+              className="w-full mt-2 text-[11px] text-text-3 hover:text-danger font-mono-ui uppercase tracking-wider py-1"
             >
               Zerar água
             </button>
@@ -356,7 +356,7 @@ export default function DietView({ onBack }: Props) {
                       {info.label}
                     </div>
                     {targetKcal > 0 && (
-                      <div className="text-[9px] text-text-3 font-mono-ui uppercase tracking-wider">
+                      <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
                         Meta: {Math.round(targetKcal)} kcal
                       </div>
                     )}
@@ -367,7 +367,7 @@ export default function DietView({ onBack }: Props) {
                     <div className="text-sm font-bold font-mono-ui text-accent">
                       {Math.round(mealData.totals.kcal)}
                     </div>
-                    <div className="text-[9px] text-text-3 font-mono-ui">
+                    <div className="text-[11px] text-text-3 font-mono-ui">
                       kcal
                     </div>
                   </div>
@@ -385,7 +385,7 @@ export default function DietView({ onBack }: Props) {
                         <div className="text-xs text-text-0 truncate">
                           {entry.foodName}
                         </div>
-                        <div className="text-[9px] text-text-3 font-mono-ui mt-0.5">
+                        <div className="text-[11px] text-text-3 font-mono-ui mt-0.5">
                           {entry.quantityG}g · P {entry.protein}g · C{' '}
                           {entry.carbs}g · G {entry.fat}g
                         </div>
@@ -421,7 +421,7 @@ export default function DietView({ onBack }: Props) {
       {weekly && weekly.days > 0 && (
         <StaggerItem delay={0.3}>
           <Card variant="glass" className="mt-4">
-            <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
+            <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold mb-3">
               📊 Média últimos 7 dias
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -430,7 +430,7 @@ export default function DietView({ onBack }: Props) {
               <StatBox label="Carbo" value={`${weekly.carbs}g`} />
               <StatBox label="Gordura" value={`${weekly.fat}g`} />
             </div>
-            <div className="text-[9px] text-text-3 font-mono-ui text-center mt-3 uppercase tracking-wider">
+            <div className="text-[11px] text-text-3 font-mono-ui text-center mt-3 uppercase tracking-wider">
               Baseado em {weekly.days} dia{weekly.days > 1 ? 's' : ''}
             </div>
           </Card>
@@ -478,7 +478,7 @@ function MacroMini({
       <div className={`text-xs font-bold font-mono-ui ${textColor}`}>
         {Math.round(value)}
       </div>
-      <div className="text-[8px] text-text-3 font-mono-ui uppercase tracking-wider mt-0.5">
+      <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider mt-0.5">
         {label}
       </div>
       <div className="w-full h-0.5 bg-white/[0.05] rounded-full overflow-hidden mt-1">
@@ -497,7 +497,7 @@ function StatBox({ label, value }: { label: string; value: string }) {
       <div className="text-base font-bold font-mono-ui text-text-0">
         {value}
       </div>
-      <div className="text-[9px] text-text-3 font-mono-ui uppercase tracking-wider mt-0.5">
+      <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider mt-0.5">
         {label}
       </div>
     </div>

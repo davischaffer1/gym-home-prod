@@ -64,7 +64,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="min-h-screen bg-bg-0 text-text-1 flex items-center justify-center p-4 safe-top safe-bottom">
         <div className="w-full max-w-md rounded-2xl border border-danger/25 bg-bg-1 p-5 shadow-card-lg">
-          <div className="text-[10px] font-mono-ui uppercase tracking-[0.2em] text-danger font-bold">
+          <div className="text-[11px] font-mono-ui uppercase tracking-[0.2em] text-danger font-bold">
             Algo quebrou
           </div>
           <h1 className="text-xl font-bold font-display text-text-0 mt-1">
@@ -75,7 +75,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             copie os detalhes e me mande.
           </p>
 
-          <pre className="mt-3 max-h-40 overflow-auto rounded-xl bg-bg-2 p-3 text-[10px] leading-relaxed text-text-2 whitespace-pre-wrap break-words">
+          <pre className="mt-3 max-h-40 overflow-auto rounded-xl bg-bg-2 p-3 text-[11px] leading-relaxed text-text-2 whitespace-pre-wrap break-words">
             {error.message || String(error)}
           </pre>
 

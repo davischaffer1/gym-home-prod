@@ -329,7 +329,7 @@ export default function App() {
               <div className="grid grid-cols-2 gap-3">
                 <Card className="!p-4 flex flex-col justify-between">
                   <div>
-                    <div className="text-[9px] text-text-3 uppercase tracking-[0.15em] font-mono-ui">
+                    <div className="text-[11px] text-text-3 uppercase tracking-[0.15em] font-mono-ui">
                       Streak
                     </div>
                     <div className="flex items-baseline gap-1.5 mt-2">
@@ -339,7 +339,7 @@ export default function App() {
                       <span className="text-sm">🔥</span>
                     </div>
                   </div>
-                  <div className="text-[10px] text-text-3 mt-3 font-mono-ui uppercase tracking-wider">
+                  <div className="text-[11px] text-text-3 mt-3 font-mono-ui uppercase tracking-wider">
                     {streak === 0
                       ? 'Comece hoje'
                       : streak === 1
@@ -363,7 +363,7 @@ export default function App() {
               <StaggerItem delay={0.05}>
                 <Card variant="accent" glow className="!p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[9px] text-accent uppercase tracking-[0.2em] font-mono-ui font-bold">
+                    <span className="text-[11px] text-accent uppercase tracking-[0.2em] font-mono-ui font-bold">
                       ✦ Próximo Treino
                     </span>
                     {suggestion && suggestion.recommended.length > 0 && (
@@ -377,7 +377,7 @@ export default function App() {
                     {nextWorkout.name}
                   </h2>
 
-                  <div className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider mb-4">
+                  <div className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider mb-4">
                     {(() => {
                       const count = exercises?.length ?? 0;
                       return count > 0
@@ -403,10 +403,10 @@ export default function App() {
               <StaggerItem delay={0.1}>
                 <Card className="!p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="text-[9px] text-text-3 uppercase tracking-[0.2em] font-mono-ui font-bold">
+                    <div className="text-[11px] text-text-3 uppercase tracking-[0.2em] font-mono-ui font-bold">
                       Última Sessão
                     </div>
-                    <div className="text-[10px] text-text-3 font-mono-ui">
+                    <div className="text-[11px] text-text-3 font-mono-ui">
                       {new Date(lastSession.startedAt).toLocaleDateString(
                         'pt-BR',
                         { day: '2-digit', month: 'short' }
@@ -419,7 +419,7 @@ export default function App() {
                       <div className="text-2xl font-bold font-mono-ui text-text-0 leading-none">
                         {Math.round(lastVolume / 1000)}t
                       </div>
-                      <div className="text-[9px] text-text-3 uppercase tracking-wider font-mono-ui mt-1">
+                      <div className="text-[11px] text-text-3 uppercase tracking-wider font-mono-ui mt-1">
                         Volume
                       </div>
                     </div>
@@ -443,7 +443,7 @@ export default function App() {
               <div className="grid grid-cols-4 gap-2">
                 <Card interactive onClick={() => setTab('stats')} className="!p-3">
                   <span className="text-lg">📊</span>
-                  <div className="text-[9px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
+                  <div className="text-[11px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Análise
                   </div>
                 </Card>
@@ -453,7 +453,7 @@ export default function App() {
                   className="!p-3"
                 >
                   <span className="text-lg">🧬</span>
-                  <div className="text-[9px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
+                  <div className="text-[11px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Recovery
                   </div>
                 </Card>
@@ -463,7 +463,7 @@ export default function App() {
                   className="!p-3"
                 >
                   <span className="text-lg">🍽️</span>
-                  <div className="text-[9px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
+                  <div className="text-[11px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Dieta
                   </div>
                 </Card>
@@ -473,7 +473,7 @@ export default function App() {
                   className="!p-3"
                 >
                   <span className="text-lg">📜</span>
-                  <div className="text-[9px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
+                  <div className="text-[11px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Histórico
                   </div>
                 </Card>
@@ -487,7 +487,7 @@ export default function App() {
               action={
                 <button
                   onClick={() => setTab('new')}
-                  className="text-[10px] text-accent hover:text-accent-hover font-mono-ui uppercase tracking-wider font-bold"
+                  className="text-[11px] text-accent hover:text-accent-hover font-mono-ui uppercase tracking-wider font-bold"
                 >
                   + Novo
                 </button>
@@ -550,7 +550,7 @@ export default function App() {
                           <div className="font-bold text-base font-display text-text-0 truncate">
                             {w.name}
                           </div>
-                          <div className="text-[10px] text-text-3 mt-0.5 font-mono-ui uppercase tracking-wider">
+                          <div className="text-[11px] text-text-3 mt-0.5 font-mono-ui uppercase tracking-wider">
                             {isSelected
                               ? `${exercises?.length ?? 0} exercícios`
                               : 'Toque para abrir'}
@@ -685,7 +685,7 @@ export default function App() {
     return (
       <AppShell title="Novo Treino" bottomNav={bottomNav}>
         <Card className="space-y-3">
-          <label className="text-[10px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold">
+          <label className="text-[11px] text-text-3 font-mono-ui uppercase tracking-[0.15em] font-bold">
             Nome do Treino
           </label>
           <Input
@@ -805,14 +805,14 @@ function ExerciseItem({
             <button
               onClick={onMoveUp}
               disabled={isFirst}
-              className="w-5 h-4 flex items-center justify-center rounded text-[9px] text-text-3 hover:text-accent hover:bg-accent-dim disabled:opacity-20 active:scale-90 transition"
+              className="w-5 h-4 flex items-center justify-center rounded text-[11px] text-text-3 hover:text-accent hover:bg-accent-dim disabled:opacity-20 active:scale-90 transition"
             >
               ▲
             </button>
             <button
               onClick={onMoveDown}
               disabled={isLast}
-              className="w-5 h-4 flex items-center justify-center rounded text-[9px] text-text-3 hover:text-accent hover:bg-accent-dim disabled:opacity-20 active:scale-90 transition"
+              className="w-5 h-4 flex items-center justify-center rounded text-[11px] text-text-3 hover:text-accent hover:bg-accent-dim disabled:opacity-20 active:scale-90 transition"
             >
               ▼
             </button>
@@ -835,7 +835,7 @@ function ExerciseItem({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] text-text-3 font-mono-ui uppercase tracking-wider">
+        <span className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
           Alvo
         </span>
         <input
@@ -859,7 +859,7 @@ function ExerciseItem({
             db.exercises.update(ex.id!, { targetRepsMax: v });
           }}
         />
-        <span className="text-text-3 text-[10px] font-mono-ui uppercase tracking-wider">
+        <span className="text-text-3 text-[11px] font-mono-ui uppercase tracking-wider">
           reps
         </span>
 
@@ -872,14 +872,14 @@ function ExerciseItem({
             }
             className="w-3.5 h-3.5 accent-accent"
           />
-          <span className="text-[10px] text-text-2 font-mono-ui uppercase tracking-wider">
+          <span className="text-[11px] text-text-2 font-mono-ui uppercase tracking-wider">
             🧠 RIR
           </span>
         </label>
 
         {ex.useRIR && (
           <select
-            className="bg-bg-3 rounded-lg px-2 py-0.5 text-[10px] border border-white/[0.04] outline-none text-text-1 font-mono-ui"
+            className="bg-bg-3 rounded-lg px-2 py-0.5 text-[11px] border border-white/[0.04] outline-none text-text-1 font-mono-ui"
             value={ex.targetRIR ?? 2}
             onChange={(e) =>
               db.exercises.update(ex.id!, {
