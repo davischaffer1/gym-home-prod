@@ -676,10 +676,19 @@ export default function App() {
     );
   }
 
-  if (tab === 'stats') return <DashboardView onBack={() => setTab('home')} />;
+  if (tab === 'stats')
+    return (
+      <DashboardView onBack={() => setTab('home')} bottomNav={bottomNav} />
+    );
   if (tab === 'evolution')
-    return <ExerciseProgressView onBack={() => setTab('home')} />;
-  if (tab === 'diet') return <DietView onBack={() => setTab('home')} />;
+    return (
+      <ExerciseProgressView
+        onBack={() => setTab('home')}
+        bottomNav={bottomNav}
+      />
+    );
+  if (tab === 'diet')
+    return <DietView onBack={() => setTab('home')} bottomNav={bottomNav} />;
 
   if (tab === 'new') {
     return (
@@ -738,8 +747,10 @@ export default function App() {
     );
   }
 
-  if (tab === 'agenda') return <CalendarView onBack={() => setTab('home')} />;
-  if (tab === 'profile') return <ProfileView onBack={() => setTab('home')} />;
+  if (tab === 'agenda')
+    return <CalendarView onBack={() => setTab('home')} bottomNav={bottomNav} />;
+  if (tab === 'profile')
+    return <ProfileView onBack={() => setTab('home')} bottomNav={bottomNav} />;
 
   return null;
 }

@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type MealType } from './db';
+import { EmptyState } from './StateViews';
 import { MEAL_LABELS } from './foodDatabase';
 import {
   todayKey,
@@ -23,6 +25,7 @@ import { motion } from 'framer-motion';
 import EnergyBalanceView from './EnergyBalanceView';
 
 interface Props {
+  bottomNav?: ReactNode;
   onBack: () => void;
 }
 
@@ -35,7 +38,7 @@ const MEAL_ORDER: MealType[] = [
   'ceia',
 ];
 
-export default function DietView({ onBack }: Props) {
+export default function DietView({ onBack, bottomNav }: Props) {
   const [selectedDate, setSelectedDate] = useState(todayKey());
   const [pickerMeal, setPickerMeal] = useState<MealType | null>(null);
   const [showGoalView, setShowGoalView] = useState(false);
@@ -127,20 +130,19 @@ export default function DietView({ onBack }: Props) {
 
   if (!goal) {
     return (
-      <SubScreen title="Dieta" onBack={onBack}>
-        <Card variant="glass" className="text-center py-12">
-          <div className="text-5xl mb-3">🎯</div>
-          <div className="text-lg font-bold font-display text-text-0 mb-2">
-            Configure suas metas
-          </div>
-          <p className="text-text-3 text-xs mb-6 font-mono-ui uppercase tracking-wider max-w-[240px] mx-auto">
-            Pra começar a registrar sua dieta, precisamos das suas metas
-            nutricionais
-          </p>
-          <Button onClick={() => setShowGoalView(true)}>
-            Configurar metas
-          </Button>
-        </Card>
+      <SubScreen title="Dieta" onBack={onBack} bottomNav={bottomNav}>
+        <div className="pt-6">
+          <EmptyState
+            icon="🎯"
+            title="Configure suas metas"
+            description="Para registrar a dieta, o app precisa saber quanto você quer comer por dia."
+            action={
+              <Button onClick={() => setShowGoalView(true)}>
+                Configurar metas
+              </Button>
+            }
+          />
+        </div>
       </SubScreen>
     );
   }

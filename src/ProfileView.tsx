@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
@@ -16,10 +17,11 @@ import {
 } from './trainingScience';
 
 interface Props {
+  bottomNav?: ReactNode;
   onBack: () => void;
 }
 
-export default function ProfileView({ onBack }: Props) {
+export default function ProfileView({ onBack, bottomNav }: Props) {
   const [tab, setTab] = useState<'perfil' | 'corporal' | 'config'>('perfil');
 
   const profile = useLiveQuery(() => db.profile.toCollection().first(), []);
@@ -126,7 +128,7 @@ export default function ProfileView({ onBack }: Props) {
   const tdee = bmr ? calculateTDEE(bmr, 'moderado') : 0;
 
   return (
-    <SubScreen title="Perfil" onBack={onBack}>
+    <SubScreen title="Perfil" onBack={onBack} bottomNav={bottomNav}>
       {/* Tabs */}
       <div className="flex gap-1 mb-5 bg-bg-1 border border-white/[0.06] rounded-2xl p-1">
         {(['perfil', 'corporal', 'config'] as const).map((t) => (

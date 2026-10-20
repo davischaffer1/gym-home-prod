@@ -1,13 +1,15 @@
+import type { ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { useMemo, useState } from 'react';
 import { SubScreen } from './ui';
 
 interface Props {
+  bottomNav?: ReactNode;
   onBack: () => void;
 }
 
-export default function CalendarView({ onBack }: Props) {
+export default function CalendarView({ onBack, bottomNav }: Props) {
   const [year, setYear] = useState(new Date().getFullYear());
 
   const sessions = useLiveQuery(
@@ -61,17 +63,8 @@ export default function CalendarView({ onBack }: Props) {
   }
 
   return (
-    <SubScreen title="CalendarioVisualizador" onBack={onBack}>
-      <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">📅 Calendário</h1>
-        <button
-          onClick={onBack}
-          className="bg-bg-2 hover:bg-zinc-700 px-4 py-2 rounded-lg"
-        >
-          Voltar
-        </button>
-      </div>
+    <SubScreen title="Calendário" onBack={onBack} bottomNav={bottomNav}>
+      <div className="space-y-4">
 
       {/* Navegação por ano */}
       <div className="flex items-center justify-between bg-bg-1 rounded-2xl p-3">

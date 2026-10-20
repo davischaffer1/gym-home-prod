@@ -489,24 +489,38 @@ export function SubScreen({
   action,
   children,
   noPadding,
+  bottomNav,
 }: {
   title: string;
   onBack: () => void;
   action?: ReactNode;
   children: ReactNode;
   noPadding?: boolean;
+  /**
+   * Quando a tela É uma aba (Dieta, Agenda, Perfil...), passar a bottom nav:
+   * o cabeçalho perde a seta de voltar (você não "volta" de uma aba) e a
+   * navegação continua visível embaixo. Antes, entrar na Dieta fazia a barra
+   * desaparecer e a tela parecer uma sub-página.
+   */
+  bottomNav?: ReactNode;
 }) {
+  const isTab = Boolean(bottomNav);
+
   return (
     <div className="min-h-screen bg-bg-0 flex flex-col animate-slide-up">
       <header className="sticky top-0 z-40 bg-bg-0/85 backdrop-blur-xl border-b border-white/[0.05] safe-top">
         <div className="max-w-lg mx-auto px-3 py-2 flex items-center justify-between gap-2">
-          <button
-            onClick={onBack}
-            aria-label="Voltar"
-            className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-white/[0.05] active:scale-95 transition-all text-text-1 text-xl"
-          >
-            ←
-          </button>
+          {isTab ? (
+            <div className="w-10" />
+          ) : (
+            <button
+              onClick={onBack}
+              aria-label="Voltar"
+              className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-white/[0.05] active:scale-95 transition-all text-text-1 text-xl"
+            >
+              ←
+            </button>
+          )}
           <h1 className="text-base font-bold font-display text-text-0 truncate flex-1 text-center">
             {title}
           </h1>
@@ -518,11 +532,13 @@ export function SubScreen({
         <div
           className={`max-w-lg mx-auto ${
             noPadding ? '' : 'px-4 py-4'
-          } pb-8 animate-fade-in`}
+          } ${isTab ? 'pb-24' : 'pb-8'} animate-fade-in`}
         >
           {children}
         </div>
       </main>
+
+      {bottomNav}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import {
@@ -22,10 +23,11 @@ import { motion } from 'framer-motion';
 import EnergyBalanceCard from './EnergyBalanceCard';
 
 interface Props {
+  bottomNav?: ReactNode;
   onBack: () => void;
 }
 
-export default function DashboardView({ onBack }: Props) {
+export default function DashboardView({ onBack, bottomNav }: Props) {
   const sessions = useLiveQuery(async () => {
     const all = await db.sessions
       .filter((s) => s.finishedAt !== undefined)
@@ -82,7 +84,7 @@ export default function DashboardView({ onBack }: Props) {
 
   if (!sessions || !sets || !exercises) {
     return (
-      <SubScreen title="Análise" onBack={onBack}>
+      <SubScreen title="Análise" onBack={onBack} bottomNav={bottomNav}>
         <p className="text-text-3 text-center py-10 font-mono-ui uppercase tracking-wider text-[11px]">
           Carregando...
         </p>
@@ -259,7 +261,17 @@ export default function DashboardView({ onBack }: Props) {
       if (detectPlateau(summaries)) plateauCount++;
     }
 
-    return shouldDeload(meta?.lastDeloadAt, Date.now(), plateauCount);
+    const firstSessionAt =
+      sessions.length > 0
+        ? Math.min(...sessions.map((s) => s.startedAt))
+        : undefined;
+
+    return shouldDeload(
+      meta?.lastDeloadAt,
+      Date.now(),
+      plateauCount,
+      firstSessionAt
+    );
   })();
 
   async function markDeloadDone() {
@@ -272,7 +284,7 @@ export default function DashboardView({ onBack }: Props) {
   }
 
   return (
-    <SubScreen title="Análise" onBack={onBack}>
+    <SubScreen title="Análise" onBack={onBack} bottomNav={bottomNav}>
       {/* 🔥 Balanço energético (novo) */}
       <StaggerItem delay={0}>
         <div className="mb-4">

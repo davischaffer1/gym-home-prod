@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
@@ -11,10 +12,11 @@ import {
 } from './trainingScience';
 
 interface Props {
+  bottomNav?: ReactNode;
   onBack: () => void;
 }
 
-export default function ExerciseProgressView({ onBack }: Props) {
+export default function ExerciseProgressView({ onBack, bottomNav }: Props) {
   const [exerciseName, setExerciseName] = useState<string | null>(null);
 
   const exercisesWithData = useLiveQuery(async () => {
@@ -36,7 +38,7 @@ export default function ExerciseProgressView({ onBack }: Props) {
   const selected = exerciseName ?? exercisesWithData?.[0]?.name ?? null;
 
   return (
-    <SubScreen title="Evolução" onBack={onBack}>
+    <SubScreen title="Evolução" onBack={onBack} bottomNav={bottomNav}>
       {exercisesWithData === undefined && (
         <p className="text-text-3 text-center py-10 font-mono-ui uppercase tracking-wider text-[11px]">
           Carregando...

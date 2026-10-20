@@ -142,11 +142,17 @@ export function detectPlateau(summaries: SessionSetSummary[]): boolean {
 export function shouldDeload(
   lastDeloadAt: number | undefined,
   now: number,
-  plateauCount: number
+  plateauCount: number,
+  firstSessionAt?: number
 ) {
-  const weeksSince = lastDeloadAt
-    ? (now - lastDeloadAt) / (7 * 24 * 60 * 60 * 1000)
-    : 999;
+  // Sem lastDeloadAt o código antigo assumia 999 semanas e mandava o usuário
+  // que nunca treinou fazer deload ("999 semanas desde o último deload").
+  // A referência passa a ser o primeiro treino registrado.
+  const reference = lastDeloadAt ?? firstSessionAt;
+  const weeksSince = reference
+    ? (now - reference) / (7 * 24 * 60 * 60 * 1000)
+    : 0;
+
   if (plateauCount >= 3) return { yes: true, reason: '3+ platôs detectados' };
   if (weeksSince >= 6)
     return {
