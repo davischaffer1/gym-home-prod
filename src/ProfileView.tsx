@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Icon } from './Icon';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
@@ -142,10 +143,10 @@ export default function ProfileView({ onBack, bottomNav }: Props) {
             }`}
           >
             {t === 'perfil'
-              ? '👤 Perfil'
+              ? 'Perfil'
               : t === 'corporal'
-              ? '📏 Corporal'
-              : '⚙️ Config'}
+              ? 'Corporal'
+              : 'Config'}
           </button>
         ))}
       </div>
@@ -189,15 +190,27 @@ export default function ProfileView({ onBack, bottomNav }: Props) {
 
           {/* Stats principais */}
           <div className="grid grid-cols-2 gap-2">
-            <MiniStat icon="🔥" value={String(streak)} label="Streak" />
-            <MiniStat icon="🏋️" value={String(totalSessions)} label="Treinos" />
             <MiniStat
-              icon="📦"
-              value={`${Math.round(totalVolume / 1000)}t`}
+              icon={<Icon name="flame" size={18} />}
+              value={String(streak)}
+              label="Streak"
+            />
+            <MiniStat
+              icon={<Icon name="dumbbell" size={18} />}
+              value={String(totalSessions)}
+              label="Treinos"
+            />
+            <MiniStat
+              icon={<Icon name="weight" size={18} />}
+              value={
+                totalVolume >= 1000
+                  ? `${(totalVolume / 1000).toFixed(1)}t`
+                  : `${Math.round(totalVolume)} kg`
+              }
               label="Volume total"
             />
             <MiniStat
-              icon="⏱"
+              icon={<Icon name="timer" size={18} />}
               value={`${Math.floor(totalMinutes / 60)}h`}
               label="Tempo"
             />
@@ -318,14 +331,14 @@ export default function ProfileView({ onBack, bottomNav }: Props) {
           {/* Metas diárias */}
           <Card>
             <div className="text-xs text-text-3 uppercase tracking-wider font-semibold mb-3">
-              🎯 Metas diárias
+              Metas diárias
             </div>
 
             <div className="space-y-3">
               {/* Hidratação */}
               {waterTarget > 0 && (
                 <DailyTarget
-                  icon="💧"
+                  icon={<Icon name="droplet" size={18} />}
                   title="Hidratação"
                   value={`${(waterTarget / 1000).toFixed(1)} L`}
                   reference="ACSM (2007)"
@@ -335,7 +348,7 @@ export default function ProfileView({ onBack, bottomNav }: Props) {
               {/* Proteína */}
               {proteinTarget.max > 0 && (
                 <DailyTarget
-                  icon="🥩"
+                  icon={<Icon name="apple" size={18} />}
                   title="Proteína"
                   value={`${proteinTarget.min}–${proteinTarget.max} g`}
                   reference="Morton et al. (2018)"
@@ -345,7 +358,7 @@ export default function ProfileView({ onBack, bottomNav }: Props) {
               {/* Calorias */}
               {tdee > 0 && (
                 <DailyTarget
-                  icon="🔥"
+                  icon={<Icon name="flame" size={18} />}
                   title="Calorias (TDEE)"
                   value={`${tdee} kcal`}
                   reference="Mifflin et al. (1990)"
@@ -447,13 +460,15 @@ function MiniStat({
   value,
   label,
 }: {
-  icon: string;
+  icon?: ReactNode;
   value: string;
   label: string;
 }) {
   return (
     <div className="bg-bg-1 border border-white/[0.06] rounded-2xl p-3 text-center">
-      <div className="text-xl">{icon}</div>
+      {icon && (
+        <div className="mb-0.5 flex justify-center text-text-3">{icon}</div>
+      )}
       <div className="text-base font-bold text-text-0 mt-0.5">{value}</div>
       <div className="text-[11px] text-text-3 uppercase tracking-wider mt-0.5">
         {label}
@@ -469,7 +484,7 @@ function DailyTarget({
   reference,
   subtitle,
 }: {
-  icon: string;
+  icon: ReactNode;
   title: string;
   value: string;
   reference: string;
@@ -479,7 +494,7 @@ function DailyTarget({
     <div className="bg-bg-2 border border-white/[0.04] rounded-xl px-3 py-2.5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-lg">{icon}</span>
+          <span className="flex text-text-3">{icon}</span>
           <div>
             <div className="text-sm font-medium text-text-0">{title}</div>
             <div className="text-[11px] text-text-3 italic">{reference}</div>

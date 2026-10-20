@@ -14,6 +14,7 @@ import {
   rpeToRIR,
 } from './trainingScience';
 import { EmptyState, LoadingState } from './StateViews';
+import { Icon } from './Icon';
 
 interface Props {
   onBack: () => void;
@@ -63,7 +64,7 @@ export default function HistoryView({ onBack }: Props) {
 
       {sessions?.length === 0 && (
         <EmptyState
-          icon="📜"
+          icon={<Icon name="list" size={32} />}
           title="Nenhum treino concluído"
           description="Quando você encerrar uma sessão, ela aparece aqui com séries, volume e 1RM estimado."
         />

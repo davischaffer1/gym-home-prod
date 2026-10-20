@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
+import { Icon } from './Icon';
 import SessionView from './SessionView';
 import HistoryView from './HistoryView';
 import ProfileView from './ProfileView';
@@ -319,7 +320,7 @@ export default function App() {
               onClick={() => setSubView('achievements')}
               className="w-10 h-10 rounded-2xl bg-bg-1 border border-white/[0.06] flex items-center justify-center text-lg active:scale-95 transition-all"
             >
-              🏅
+              <Icon name="trophy" size={20} className="text-text-2" />
             </button>
           }
           bottomNav={bottomNav}
@@ -336,7 +337,7 @@ export default function App() {
                       <span className="text-4xl font-bold font-mono-ui text-text-0 leading-none">
                         {streak}
                       </span>
-                      <span className="text-sm">🔥</span>
+                      <Icon name="flame" size={16} className="text-text-3" />
                     </div>
                   </div>
                   <div className="text-[11px] text-text-3 mt-3 font-mono-ui uppercase tracking-wider">
@@ -442,7 +443,7 @@ export default function App() {
             <StaggerItem delay={0.15}>
               <div className="grid grid-cols-4 gap-2">
                 <Card interactive onClick={() => setTab('stats')} className="!p-3">
-                  <span className="text-lg">📊</span>
+                  <Icon name="chart" size={20} className="text-text-2" />
                   <div className="text-[11px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Análise
                   </div>
@@ -452,7 +453,7 @@ export default function App() {
                   onClick={() => setSubView('recovery')}
                   className="!p-3"
                 >
-                  <span className="text-lg">🧬</span>
+                  <Icon name="pulse" size={20} className="text-text-2" />
                   <div className="text-[11px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Recovery
                   </div>
@@ -462,7 +463,7 @@ export default function App() {
                   onClick={() => setTab('diet')}
                   className="!p-3"
                 >
-                  <span className="text-lg">🍽️</span>
+                  <Icon name="apple" size={20} className="text-text-2" />
                   <div className="text-[11px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Dieta
                   </div>
@@ -472,7 +473,7 @@ export default function App() {
                   onClick={() => setSubView('history')}
                   className="!p-3"
                 >
-                  <span className="text-lg">📜</span>
+                  <Icon name="list" size={20} className="text-text-2" />
                   <div className="text-[11px] font-bold text-text-0 mt-1.5 font-mono-ui uppercase tracking-wider">
                     Histórico
                   </div>

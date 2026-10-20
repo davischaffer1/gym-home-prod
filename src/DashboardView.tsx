@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
+import { Icon } from './Icon';
 import {
   detectPlateau,
   shouldDeload,
@@ -340,30 +341,38 @@ export default function DashboardView({ onBack, bottomNav }: Props) {
       <StaggerItem delay={0.2}>
         <div className="grid grid-cols-2 gap-2 mb-4 mt-4">
           <MiniStat
-            icon="🔥"
+            icon={<Icon name="flame" size={18} />}
             value={String(streak)}
             label="Streak"
             highlight={streak >= 3}
           />
           <MiniStat
-            icon="📅"
+            icon={<Icon name="calendar" size={18} />}
             value={String(weekSessions.length)}
             label="Semana"
           />
           <MiniStat
-            icon="🗓"
+            icon={<Icon name="trend" size={18} />}
             value={String(monthSessions.length)}
             label="Mês"
           />
           <MiniStat
-            icon="⏱"
+            icon={<Icon name="timer" size={18} />}
             value={formatTotalTime(totalMinutes)}
             label="Tempo"
           />
-          <MiniStat icon="🔁" value={String(sets.length)} label="Séries" />
           <MiniStat
-            icon="📦"
-            value={`${Math.round(totalVolume / 1000)}t`}
+            icon={<Icon name="layers" size={18} />}
+            value={String(sets.length)}
+            label="Séries"
+          />
+          <MiniStat
+            icon={<Icon name="weight" size={18} />}
+            value={
+              totalVolume >= 1000
+                ? `${(totalVolume / 1000).toFixed(1)}t`
+                : `${Math.round(totalVolume)} kg`
+            }
             label="Volume"
           />
         </div>
@@ -749,7 +758,7 @@ function MiniStat({
   label,
   highlight,
 }: {
-  icon: string;
+  icon?: ReactNode;
   value: string;
   label: string;
   highlight?: boolean;
@@ -762,7 +771,9 @@ function MiniStat({
           : 'bg-bg-1 border-white/[0.06] shadow-card'
       }`}
     >
-      <div className="text-lg mb-1">{icon}</div>
+      {icon && (
+        <div className="mb-1 flex justify-center text-text-3">{icon}</div>
+      )}
       <div
         className={`text-lg font-bold tracking-tight font-mono-ui ${
           highlight ? 'text-accent' : 'text-text-0'

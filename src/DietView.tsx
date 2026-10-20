@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type MealType } from './db';
 import { EmptyState } from './StateViews';
+import { Icon } from './Icon';
 import { MEAL_LABELS } from './foodDatabase';
 import {
   todayKey,
@@ -133,7 +134,7 @@ export default function DietView({ onBack, bottomNav }: Props) {
       <SubScreen title="Dieta" onBack={onBack} bottomNav={bottomNav}>
         <div className="pt-6">
           <EmptyState
-            icon="🎯"
+            icon={<Icon name="target" size={32} />}
             title="Configure suas metas"
             description="Para registrar a dieta, o app precisa saber quanto você quer comer por dia."
             action={
@@ -161,20 +162,25 @@ export default function DietView({ onBack, bottomNav }: Props) {
             onClick={() => setShowEnergy(true)}
             className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-2"
             title="Balanço energético"
+            aria-label="Balanço energético"
           >
-            🔥
+            <Icon name="flame" size={18} />
           </button>
           <button
             onClick={() => setShowAnalysis(true)}
             className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-2"
+            title="Análise da dieta"
+            aria-label="Análise da dieta"
           >
-            📊
+            <Icon name="chart" size={18} />
           </button>
           <button
             onClick={() => setShowGoalView(true)}
             className="w-10 h-10 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-text-2"
+            title="Metas nutricionais"
+            aria-label="Metas nutricionais"
           >
-            ⚙️
+            <Icon name="settings" size={18} />
           </button>
         </div>
       }
