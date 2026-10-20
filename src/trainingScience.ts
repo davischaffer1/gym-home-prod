@@ -181,11 +181,21 @@ export function suggestLoadByRIR(
   reportedRIR: number,
   targetRIR: number,
   exerciseName: string
-): { newWeight: number; direction: "up" | "down" | "keep"; delta: number } {
+): {
+  currentWeight: number;
+  suggestedWeight: number;
+  direction: "up" | "down" | "keep";
+  delta: number;
+} {
   const diff = reportedRIR - targetRIR;
 
   if (Math.abs(diff) < 1) {
-    return { newWeight: currentWeight, direction: "keep", delta: 0 };
+    return {
+      currentWeight,
+      suggestedWeight: currentWeight,
+      direction: "keep",
+      delta: 0,
+    };
   }
 
   // Define step base (menor para isoladores)
@@ -199,7 +209,8 @@ export function suggestLoadByRIR(
   const newWeight = Math.round(raw / step) * step;
 
   return {
-    newWeight,
+    currentWeight,
+    suggestedWeight: newWeight,
     direction: diff > 0 ? "up" : "down",
     delta: newWeight - currentWeight,
   };
@@ -702,7 +713,14 @@ export function getBestSetBy1RM<
       const ex = exercises.find((e) => e.id === s.exerciseId);
       if (!ex) continue;
   
-      const activation = classifyFiberActivation(s);
+      if (s.weight === undefined || s.reps === undefined) continue;
+
+      const activation = classifyFiberActivation({
+        weight: s.weight,
+        reps: s.reps,
+        rpe: s.rpe,
+        type: s.type,
+      });
       if (!activation) continue;
   
       const group = ex.primaryGroup ?? guessGroupFromName(ex.name);

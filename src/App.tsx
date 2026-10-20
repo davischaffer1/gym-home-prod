@@ -12,6 +12,7 @@ import ExerciseProgressView from './ExerciseProgressView';
 import RecoveryView from './RecoveryView';
 import DietView from './DietView';
 import { useSwipe } from './useSwipe';
+import { useHashRoute } from './router';
 import { getActiveSession, clearActiveSession } from './activeSession';
 import { StaggerItem, PunchButton } from './Motion';
 import { Sparkline } from './ForceCharts';
@@ -40,20 +41,12 @@ type Tab =
   | 'agenda'
   | 'profile'
   | 'new';
-type SubView =
-  | null
-  | 'history'
-  | 'progress'
-  | 'achievements'
-  | 'recovery';
-
 const TABS: Tab[] = ['home', 'stats', 'evolution', 'diet', 'agenda', 'profile'];
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('home');
-  const [subView, setSubView] = useState<SubView>(null);
+  const { tab, subView, inSession, setTab, setSubView, setInSession } =
+    useHashRoute();
   const [selectedWorkout, setSelectedWorkout] = useState<number | null>(null);
-  const [inSession, setInSession] = useState(false);
   const [sessionKey, setSessionKey] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [workoutName, setWorkoutName] = useState('');

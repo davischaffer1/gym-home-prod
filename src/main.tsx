@@ -1,7 +1,14 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import ErrorBoundary from './ErrorBoundary';
+import { ensurePersistentStorage } from './backup';
 import './index.css';
+
+// Pede ao navegador para não despejar o IndexedDB (iOS/Safari).
+ensurePersistentStorage().catch(() => {
+  /* não é bloqueante */
+});
 
 // Registra o Service Worker de notificações
 if ('serviceWorker' in navigator) {
@@ -19,6 +26,8 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>
 );

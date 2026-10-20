@@ -63,7 +63,7 @@ export default function HistoryView({ onBack }: Props) {
       )}
 
       {sessions?.length === 0 && (
-        <Card variant="subtle">
+        <Card variant="glass">
           <p className="text-text-3 text-sm text-center py-10">
             Nenhuma sessão finalizada ainda
           </p>
@@ -200,7 +200,7 @@ function SessionDetails({ sessionId }: { sessionId: number }) {
                       <div className="text-[10px] text-text-3 uppercase tracking-wider">
                         1RM est.
                       </div>
-                      <div className="text-sm font-bold text-purple">
+                      <div className="text-sm font-bold text-sci font-mono-ui">
                         {Math.round(best1RM * 10) / 10} kg
                       </div>
                     </div>

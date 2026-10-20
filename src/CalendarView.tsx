@@ -19,14 +19,15 @@ export default function CalendarView({ onBack }: Props) {
 
   // Agrupa sessões por dia (usando data LOCAL)
   const sessionsByDay = useMemo(() => {
-    if (!sessions) return new Map<string, typeof sessions>();
-    const map = new Map<string, typeof sessions>();
+    const map = new Map<string, NonNullable<typeof sessions>>();
+    if (!sessions) return map;
     for (const s of sessions) {
       const d = new Date(s.startedAt);
       if (d.getFullYear() !== year) continue;
       const key = toLocalDateKey(d);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(s);
+      const list = map.get(key);
+      if (list) list.push(s);
+      else map.set(key, [s]);
     }
     return map;
   }, [sessions, year]);

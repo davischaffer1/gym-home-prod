@@ -693,7 +693,7 @@ function ExerciseCard({
     });
 
     // 🏆 Detecta PR e chama celebração
-    const isPR = type !== 'warmup' && pr !== null && w > pr.weight;
+    const isPR = type !== 'warmup' && pr != null && w > pr.weight;
     const isFirstSet = !pr && type !== 'warmup' && w > 0;
 
     if (isPR || isFirstSet) {

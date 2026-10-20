@@ -286,7 +286,7 @@ export default function ProfileView({ onBack }: Props) {
 
           {/* Se não tem dados */}
           {!isr && percentiles.length === 0 && (
-            <Card variant="subtle">
+            <Card variant="glass">
               <p className="text-text-3 text-sm text-center py-4">
                 Complete treinos com supino, agachamento e terra para ver suas
                 métricas de força.

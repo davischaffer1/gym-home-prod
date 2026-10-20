@@ -1,3 +1,154 @@
+@import 'tailwindcss';
+
+/* ══════════════════════════════════════════════════════════
+   DESIGN TOKENS (Tailwind v4 — CSS-first)
+   Equivale 1:1 ao antigo `tailwind.config` que estava no
+   index.html via CDN. Os nomes das classes não mudam.
+   ══════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Fundo profundo azul-carvão ── */
+  --color-bg-0: #050810;
+  --color-bg-1: #0a1020;
+  --color-bg-2: #101828;
+  --color-bg-3: #18233a;
+
+  /* ── Texto ── */
+  --color-text-0: #f0f6ff;
+  --color-text-1: #cbd5e1;
+  --color-text-2: #94a3b8;
+  --color-text-3: #475569;
+
+  /* ── Accent principal (cyan) ── */
+  --color-accent: #06b6d4;
+  --color-accent-hover: #22d3ee;
+  --color-accent-dim: rgba(6, 182, 212, 0.12);
+  --color-accent-glow: rgba(6, 182, 212, 0.35);
+
+  /* ── Semânticas ── */
+  --color-danger: #ef4444;
+  --color-warn: #f97316;
+  --color-success: #10b981;
+  --color-info: #60a5fa;
+  --color-sci: #a78bfa;
+  --color-pr: #f97316;
+
+  /* ── Tipografia ── */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* ── Raios ── */
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+
+  /* ── Sombras ── */
+  --shadow-glow-accent: 0 0 0 1px rgba(6, 182, 212, 0.25),
+    0 8px 32px -8px rgba(6, 182, 212, 0.45);
+  --shadow-glow-pr: 0 0 0 1px rgba(249, 115, 22, 0.25),
+    0 8px 32px -8px rgba(249, 115, 22, 0.45);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.45);
+  --shadow-card-lg: 0 12px 48px rgba(0, 0, 0, 0.55);
+  --shadow-inset-hi: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-punch: 0 0 0 0 rgba(6, 182, 212, 0.7);
+
+  /* ── Animações ── */
+  --animate-fade-in: fadeIn 0.25s ease-out;
+  --animate-slide-up: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scale-in: scaleIn 0.2s ease-out;
+  --animate-pulse-soft: pulseSoft 2.4s ease-in-out infinite;
+  --animate-pulse-glow: pulseGlow 2s ease-in-out infinite;
+  --animate-punch: punch 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-shimmer: shimmer 2.5s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes pulseSoft {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes pulseGlow {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.4),
+        0 0 20px -4px rgba(6, 182, 212, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(6, 182, 212, 0),
+        0 0 30px -4px rgba(6, 182, 212, 0.7);
+    }
+  }
+  @keyframes punch {
+    0% {
+      box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.8);
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 0 14px rgba(6, 182, 212, 0);
+      transform: scale(1.08);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+      transform: scale(1);
+    }
+  }
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-4px);
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   BASE
+   ══════════════════════════════════════════════════════════ */
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -15,9 +166,9 @@ body,
   text-rendering: optimizeLegibility;
 }
 
-/* Fontes display e mono aplicadas por classe */
+/* .font-display / .font-mono agora são geradas pelo @theme acima.
+   Mantemos só o ajuste de letter-spacing. */
 .font-display {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
   letter-spacing: -0.02em;
 }
 .font-mono-ui {
@@ -26,19 +177,32 @@ body,
 }
 
 /* Safe area iPhone */
-.safe-top { padding-top: env(safe-area-inset-top); }
-.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
 .safe-x {
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
 
 /* Scrollbar oculta */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* Inputs sem zoom no iOS */
-input, textarea, select { font-size: 16px; }
+input,
+textarea,
+select {
+  font-size: 16px;
+}
 
 /* Feedback tátil */
 button {
@@ -49,7 +213,10 @@ button:active:not(:disabled) {
   transform: scale(0.97);
 }
 
-a, button { transition: all 0.15s ease; }
+a,
+button {
+  transition: all 0.15s ease;
+}
 
 input:focus-visible,
 textarea:focus-visible,
@@ -86,8 +253,13 @@ select:focus-visible {
 
 /* Scrollbar fina no desktop */
 @media (min-width: 768px) {
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
   ::-webkit-scrollbar-thumb {
     background: rgba(6, 182, 212, 0.15);
     border-radius: 4px;
