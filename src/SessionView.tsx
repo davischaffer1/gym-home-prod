@@ -933,6 +933,11 @@ function ExerciseCard({
           </Badge>
         )}
         {exercise.useRIR && exercise.targetRIR !== undefined && (
+        {exercise.targetSets !== undefined && (
+          <Badge variant="sci">
+            📦 {exercise.targetSets} séries planejadas
+          </Badge>
+        )
           <Badge variant="sci">🧠 RIR {exercise.targetRIR}</Badge>
         )}
         {done && (
