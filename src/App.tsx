@@ -68,6 +68,9 @@ export default function App() {
   // Restaura sessão ativa
   useEffect(() => {
     (async () => {
+
+const APP_VERSION = "1.0.0";
+const APP_BUILD_DATE = "---";
       const activeId = getActiveSession();
       if (!activeId) return;
 
@@ -325,6 +328,11 @@ export default function App() {
               year: 'numeric',
             })
             .toUpperCase()}
+          subTitle={
+            <div className="text-[11px] text-text-3 mt-1 uppercase tracking-[0.15em] font-mono-ui">
+              <span className="font-mono-ui text-accent">v{}</span> Atualizado em {}
+            </div>
+          }
           headerAction={
             <button
               onClick={() => setSubView('achievements')}
