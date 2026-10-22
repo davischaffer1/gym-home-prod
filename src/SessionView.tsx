@@ -937,7 +937,7 @@ function ExerciseCard({
         )}
         {exercise.targetSets !== undefined ? (
           <Badge variant="sci">
-            📦 {exercise.targetRIR} séries
+            📦 {exercise.targetSets} séries
           </Badge>
         ) : null}
         {done && (
