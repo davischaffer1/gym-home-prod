@@ -222,6 +222,11 @@ export default function App() {
       workoutId: selectedWorkout,
       name: exerciseName.trim(),
       order,
+      targetSets: 3,
+      targetRepsMin: 6,
+      targetRepsMax: 9,
+      useRIR: true,
+      targetRIR: 2,
     });
     setExerciseName('');
   }
@@ -234,6 +239,11 @@ export default function App() {
       name,
       order,
       primaryGroup: group,
+      targetSets: 3,
+      targetRepsMin: 6,
+      targetRepsMax: 9,
+      useRIR: true,
+      targetRIR: 2,
     });
   }
 
@@ -796,6 +806,7 @@ function ExerciseItem({
     id?: number;
     name: string;
     order: number;
+    targetSets?: number;
     targetRepsMin?: number;
     targetRepsMax?: number;
     note?: string;
@@ -848,7 +859,21 @@ function ExerciseItem({
 
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider">
-          Alvo
+          Séries
+        </span>
+        <input
+          className="w-12 bg-bg-3 rounded-lg px-2 py-1 outline-none text-center text-xs text-text-0 border border-white/[0.04] focus:border-accent/50 font-mono-ui"
+          inputMode="numeric"
+          placeholder="3"
+          value={ex.targetSets ?? ''}
+          onChange={(e) => {
+            const v = e.target.value ? parseInt(e.target.value) : undefined;
+            db.exercises.update(ex.id!, { targetSets: v });
+          }}
+        />
+
+        <span className="text-[11px] text-text-3 font-mono-ui uppercase tracking-wider ml-2">
+          Reps
         </span>
         <input
           className="w-12 bg-bg-3 rounded-lg px-2 py-1 outline-none text-center text-xs text-text-0 border border-white/[0.04] focus:border-accent/50 font-mono-ui"
@@ -871,9 +896,6 @@ function ExerciseItem({
             db.exercises.update(ex.id!, { targetRepsMax: v });
           }}
         />
-        <span className="text-text-3 text-[11px] font-mono-ui uppercase tracking-wider">
-          reps
-        </span>
 
         <label className="flex items-center gap-1.5 cursor-pointer ml-auto">
           <input

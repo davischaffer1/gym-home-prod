@@ -3,11 +3,29 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { useMemo, useState } from 'react';
 import { SubScreen } from './ui';
+import { Icon } from './Icon';
 
 interface Props {
   bottomNav?: ReactNode;
   onBack: () => void;
 }
+
+const MONTH_NAMES = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+];
+
+const WEEKDAY_INITIALS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 export default function CalendarView({ onBack, bottomNav }: Props) {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -34,8 +52,6 @@ export default function CalendarView({ onBack, bottomNav }: Props) {
     return map;
   }, [sessions, year]);
 
-  const { weeks, monthLabels } = useMemo(() => buildYearCalendar(year), [year]);
-
   const totalThisYear = sessionsByDay.size;
 
   const maxInDay = Math.max(
@@ -46,8 +62,8 @@ export default function CalendarView({ onBack, bottomNav }: Props) {
   function colorFor(count: number) {
     if (count === 0) return 'bg-bg-2';
     const intensity = count / maxInDay;
-    if (intensity <= 0.33) return 'bg-accent/20';
-    if (intensity <= 0.66) return 'bg-accent/50';
+    if (intensity <= 0.33) return 'bg-accent/25';
+    if (intensity <= 0.66) return 'bg-accent/60';
     return 'bg-accent';
   }
 
@@ -62,132 +78,158 @@ export default function CalendarView({ onBack, bottomNav }: Props) {
       .join('\n');
   }
 
+  const today = new Date();
+  const todayKey = toLocalDateKey(today);
+
   return (
     <SubScreen title="Calendário" onBack={onBack} bottomNav={bottomNav}>
       <div className="space-y-4">
+        {/* Navegação por ano */}
+        <div className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-bg-1 p-3">
+          <button
+            onClick={() => setYear((y) => y - 1)}
+            aria-label="Ano anterior"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.05] text-text-1 active:scale-95"
+          >
+            <span className="rotate-180">
+              <Icon name="chevron-right" size={18} />
+            </span>
+          </button>
 
-      {/* Navegação por ano */}
-      <div className="flex items-center justify-between bg-bg-1 rounded-2xl p-3">
-        <button
-          onClick={() => setYear((y) => y - 1)}
-          className="bg-bg-2 hover:bg-zinc-700 px-3 py-1 rounded-lg text-sm"
-        >
-          ←
-        </button>
-        <div className="text-center">
-          <div className="text-lg font-bold">{year}</div>
-          <div className="text-xs text-text-2">
-            {totalThisYear} dia{totalThisYear !== 1 ? 's' : ''} treinado
-            {totalThisYear !== 1 ? 's' : ''}
-          </div>
-        </div>
-        <button
-          onClick={() => setYear((y) => y + 1)}
-          disabled={year >= new Date().getFullYear()}
-          className="bg-bg-2 hover:bg-zinc-700 disabled:opacity-40 px-3 py-1 rounded-lg text-sm"
-        >
-          →
-        </button>
-      </div>
-
-      {/* Calendário */}
-      <div className="bg-bg-1 rounded-2xl p-4 overflow-x-auto">
-        <div className="inline-block min-w-full">
-          {/* Rótulos de mês */}
-          <div className="flex gap-1 pl-8 mb-1">
-            {monthLabels.map((m, i) => (
-              <div
-                key={i}
-                className="text-[11px] text-text-3"
-                style={{ width: `${m.cols * 14}px` }}
-              >
-                {m.label}
-              </div>
-            ))}
-          </div>
-
-          {/* Grid de semanas */}
-          <div className="flex gap-1">
-            {/* Dias da semana (Y) */}
-            <div className="flex flex-col gap-1 pr-1">
-              {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
-                <div
-                  key={i}
-                  className="w-3 h-3 text-[10px] text-text-3 flex items-center justify-center"
-                >
-                  {i % 2 === 1 ? d : ''}
-                </div>
-              ))}
+          <div className="text-center">
+            <div className="font-display text-lg font-bold text-text-0">
+              {year}
             </div>
-
-            {/* Semanas */}
-            {weeks.map((week, wi) => (
-              <div key={wi} className="flex flex-col gap-1">
-                {week.map((day, di) => {
-                  if (!day) {
-                    return (
-                      <div
-                        key={di}
-                        className="w-3 h-3 rounded-sm bg-transparent"
-                      />
-                    );
-                  }
-                  const key = toLocalDateKey(day);
-                  const count = sessionsByDay.get(key)?.length ?? 0;
-                  const isFuture = day.getTime() > Date.now();
-                  return (
-                    <div
-                      key={di}
-                      title={tooltipFor(key)}
-                      className={`w-3 h-3 rounded-sm ${
-                        isFuture ? 'bg-bg-2/50' : colorFor(count)
-                      }`}
-                    />
-                  );
-                })}
-              </div>
-            ))}
+            <div className="font-mono-ui text-[11px] uppercase tracking-wider text-text-3">
+              {totalThisYear === 0
+                ? 'nenhum treino'
+                : `${totalThisYear} ${totalThisYear === 1 ? 'dia treinado' : 'dias treinados'}`}
+            </div>
           </div>
+
+          <button
+            onClick={() => setYear((y) => y + 1)}
+            disabled={year >= today.getFullYear()}
+            aria-label="Próximo ano"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.05] text-text-1 active:scale-95 disabled:opacity-30"
+          >
+            <Icon name="chevron-right" size={18} />
+          </button>
+        </div>
+
+        {/* 12 meses em grade — cabe em 390px sem rolagem horizontal */}
+        <div className="grid grid-cols-2 gap-3">
+          {MONTH_NAMES.map((name, month) => (
+            <MonthBlock
+              key={name}
+              year={year}
+              month={month}
+              name={name}
+              sessionsByDay={sessionsByDay}
+              colorFor={colorFor}
+              tooltipFor={tooltipFor}
+              todayKey={todayKey}
+            />
+          ))}
+        </div>
+
+        {/* Legenda — mesmas classes que colorFor usa */}
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <span className="font-mono-ui text-[11px] uppercase tracking-wider text-text-3">
+            menos
+          </span>
+          <span className="h-3 w-3 rounded-sm bg-bg-2" />
+          <span className="h-3 w-3 rounded-sm bg-accent/25" />
+          <span className="h-3 w-3 rounded-sm bg-accent/60" />
+          <span className="h-3 w-3 rounded-sm bg-accent" />
+          <span className="font-mono-ui text-[11px] uppercase tracking-wider text-text-3">
+            mais
+          </span>
         </div>
       </div>
-
-      {/* Legenda */}
-      <div className="flex items-center justify-end gap-2 text-xs text-text-3">
-        <span>menos</span>
-        <div className="w-3 h-3 rounded-sm bg-bg-2" />
-        <div className="w-3 h-3 rounded-sm bg-emerald-900" />
-        <div className="w-3 h-3 rounded-sm bg-accent" />
-        <div className="w-3 h-3 rounded-sm bg-accent-hover" />
-        <span>mais</span>
-      </div>
-    </div>
     </SubScreen>
   );
-
 }
 
-/* ============================================================
-   Helpers — fora do componente
-   ============================================================ */
+/* ────────── um mês ────────── */
 
-const MONTH_NAMES = [
-  'Jan',
-  'Fev',
-  'Mar',
-  'Abr',
-  'Mai',
-  'Jun',
-  'Jul',
-  'Ago',
-  'Set',
-  'Out',
-  'Nov',
-  'Dez',
-];
+function MonthBlock({
+  year,
+  month,
+  name,
+  sessionsByDay,
+  colorFor,
+  tooltipFor,
+  todayKey,
+}: {
+  year: number;
+  month: number;
+  name: string;
+  sessionsByDay: Map<string, unknown[]>;
+  colorFor: (count: number) => string;
+  tooltipFor: (dateKey: string) => string;
+  todayKey: string;
+}) {
+  const cells = useMemo(() => buildMonth(year, month), [year, month]);
+  const trained = cells.reduce((acc, d) => {
+    if (!d) return acc;
+    return acc + (sessionsByDay.get(toLocalDateKey(d))?.length ?? 0);
+  }, 0);
 
-function monthName(m: number): string {
-  return MONTH_NAMES[m] ?? '';
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-bg-1 p-3">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="font-mono-ui text-[11px] font-bold uppercase tracking-wider text-text-1">
+          {name.slice(0, 3)}
+        </span>
+        {trained > 0 && (
+          <span className="font-mono-ui text-[10px] text-accent">{trained}</span>
+        )}
+      </div>
+
+      <div className="mb-1 grid grid-cols-7 gap-1">
+        {WEEKDAY_INITIALS.map((d, i) => (
+          <div
+            key={`${d}-${i}`}
+            className="text-center font-mono-ui text-[9px] text-text-3"
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, i) => {
+          if (!day) {
+            return <div key={`empty-${i}`} className="aspect-square" />;
+          }
+
+          const key = toLocalDateKey(day);
+          const count = sessionsByDay.get(key)?.length ?? 0;
+          const isFuture = day.getTime() > Date.now();
+          const isToday = key === todayKey;
+
+          return (
+            <div
+              key={key}
+              title={tooltipFor(key)}
+              aria-label={
+                count > 0
+                  ? `${day.getDate()}: ${count} treino(s)`
+                  : `${day.getDate()}: sem treino`
+              }
+              className={`aspect-square rounded-[4px] ${
+                isFuture ? 'bg-bg-2/40' : colorFor(count)
+              } ${isToday ? 'ring-1 ring-accent ring-offset-1 ring-offset-bg-1' : ''}`}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
 }
+
+/* ────────── helpers ────────── */
 
 /**
  * Converte Date para string "YYYY-MM-DD" no FUSO LOCAL.
@@ -201,61 +243,17 @@ function toLocalDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function buildYearCalendar(year: number) {
-  const start = new Date(year, 0, 1);
-  const end = new Date(year, 11, 31);
+/** Grade do mês: começa no domingo, com null nos espaços vazios. */
+function buildMonth(year: number, month: number): (Date | null)[] {
+  const first = new Date(year, month, 1);
+  const offset = first.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Ajusta para começar no domingo
-  const startDay = start.getDay();
-  const first = new Date(start);
-  first.setDate(first.getDate() - startDay);
-
-  const weeks: (Date | null)[][] = [];
-  const cursor = new Date(first);
-  let currentWeek: (Date | null)[] = [];
-
-  while (cursor <= end) {
-    const isInYear = cursor.getFullYear() === year;
-    currentWeek.push(isInYear ? new Date(cursor) : null);
-
-    // Fim da semana (sábado)
-    if (cursor.getDay() === 6) {
-      weeks.push(currentWeek);
-      currentWeek = [];
-    }
-
-    cursor.setDate(cursor.getDate() + 1);
+  const cells: (Date | null)[] = Array.from({ length: offset }, () => null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(new Date(year, month, d));
   }
+  while (cells.length % 7 !== 0) cells.push(null);
 
-  // Semana incompleta no final
-  if (currentWeek.length > 0) {
-    while (currentWeek.length < 7) currentWeek.push(null);
-    weeks.push(currentWeek);
-  }
-
-  // Rótulos de mês
-  const monthLabels: { label: string; cols: number }[] = [];
-  for (let m = 0; m < 12; m++) {
-    let firstWeekIdx = -1;
-    let lastWeekIdx = -1;
-    for (let w = 0; w < weeks.length; w++) {
-      for (const d of weeks[w]) {
-        if (!d) continue;
-        if (firstWeekIdx === -1 && d.getMonth() === m && d.getDate() === 1) {
-          firstWeekIdx = w;
-        }
-        if (d.getMonth() === m) {
-          lastWeekIdx = w;
-        }
-      }
-    }
-    if (firstWeekIdx !== -1 && lastWeekIdx !== -1) {
-      monthLabels.push({
-        label: monthName(m),
-        cols: lastWeekIdx - firstWeekIdx + 1,
-      });
-    }
-  }
-
-  return { weeks, monthLabels };
+  return cells;
 }
