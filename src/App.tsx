@@ -68,6 +68,9 @@ export default function App() {
   // Restaura sessão ativa
   useEffect(() => {
     (async () => {
+
+const APP_VERSION = "1.0.0";
+const APP_BUILD_DATE = "---";
       const activeId = getActiveSession();
       if (!activeId) return;
 
